@@ -12,26 +12,22 @@ pub fn count_group_priority(file: &str) -> i32 {
     let data = fs::read_to_string(file).unwrap();
     let mut lines = data.lines();
     let mut result: i32 = 0;
-    loop {
-        if let Ok([a, b, c]) = lines.next_chunk::<3>() {
-            let (mut set_a, set_b, set_c): (HashSet<u8>, HashSet<u8>, HashSet<u8>) = (
-                a.bytes().collect(),
-                b.bytes().collect(),
-                c.bytes().collect(),
-            );
+    while let Ok([a, b, c]) = lines.next_chunk::<3>() {
+        let (mut set_a, set_b, set_c): (HashSet<u8>, HashSet<u8>, HashSet<u8>) = (
+            a.bytes().collect(),
+            b.bytes().collect(),
+            c.bytes().collect(),
+        );
 
-            set_a.retain(|i| {
-                vec![set_b.clone(), set_c.clone()]
-                    .iter()
-                    .all(|set| set.contains(i))
-            });
-            let item = set_a.iter().next().unwrap();
-            result += priority(item) as i32;
-        } else {
-            break;
-        }
+        set_a.retain(|i| {
+            vec![set_b.clone(), set_c.clone()]
+                .iter()
+                .all(|set| set.contains(i))
+        });
+        let item = set_a.iter().next().unwrap();
+        result += priority(item) as i32;
     }
-    return result;
+    result
 }
 
 fn find_overlap(rucksacks: &str) -> u8 {
@@ -43,7 +39,7 @@ fn find_overlap(rucksacks: &str) -> u8 {
 
     let union: Vec<_> = set_one.intersection(&set_two).collect();
     assert_eq!(union.len(), 1);
-    let item = union.iter().next().unwrap();
+    let item = union.first().unwrap();
     priority(item)
 }
 

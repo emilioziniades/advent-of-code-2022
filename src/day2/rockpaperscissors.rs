@@ -70,7 +70,7 @@ impl Game {
             C::Scissors => 3,
         };
 
-        return outcome_pts + choice_pts;
+        outcome_pts + choice_pts
     }
 }
 

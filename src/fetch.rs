@@ -8,7 +8,7 @@ pub fn input(day: i32) {
         let cookie = {
             dotenv::dotenv().ok();
             let cookie_key = env::var("AOC_COOKIE").expect("cookie exists");
-            format!("session={}", cookie_key)
+            format!("session={cookie_key}")
         };
 
         let response = {
