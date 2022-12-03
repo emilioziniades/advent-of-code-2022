@@ -78,7 +78,7 @@ mod tests {
     fn count_total_group_score() {
         init();
 
-        let tests = vec![("src/day3/example.txt", 70), ("src/day3/input.txt", 0)];
+        let tests = vec![("src/day3/example.txt", 70), ("src/day3/input.txt", 2499)];
 
         for test in tests {
             let (file, want) = test;
