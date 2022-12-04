@@ -1,32 +1,47 @@
 use std::{collections::HashSet, fs};
 
+use itertools::Itertools;
+
 pub fn count_overlap_priority(file: &str) -> i32 {
     fs::read_to_string(file)
         .unwrap()
         .lines()
-        .map(|x| find_overlap(x) as i32)
+        .map(|line| find_overlap(line) as i32)
         .sum()
 }
 
 pub fn count_group_priority(file: &str) -> i32 {
-    let data = fs::read_to_string(file).unwrap();
-    let mut lines = data.lines();
-    let mut result: i32 = 0;
-    while let Ok([a, b, c]) = lines.next_chunk::<3>() {
-        let (mut set_a, set_b, set_c): (HashSet<u8>, HashSet<u8>, HashSet<u8>) = (
-            a.bytes().collect(),
-            b.bytes().collect(),
-            c.bytes().collect(),
-        );
+    fs::read_to_string(file)
+        .unwrap()
+        .lines()
+        .chunks(3)
+        .into_iter()
+        .map(|group| {
+            intersect_all(
+                group
+                    .into_iter()
+                    .map(|row| row.bytes().collect::<HashSet<u8>>())
+                    .collect::<Vec<_>>(),
+            )
+        })
+        .into_iter()
+        .map(|set| priority(set.iter().next().unwrap()) as i32)
+        .sum()
+}
 
-        set_a.retain(|i| {
-            vec![set_b.clone(), set_c.clone()]
-                .iter()
-                .all(|set| set.contains(i))
-        });
-        let item = set_a.iter().next().unwrap();
-        result += priority(item) as i32;
+fn intersect_all(mut sets: Vec<HashSet<u8>>) -> HashSet<u8> {
+    if sets.is_empty() {
+        return HashSet::new();
     }
+
+    if sets.len() == 1 {
+        return sets.pop().unwrap();
+    }
+
+    let mut result = sets.pop().unwrap();
+
+    result.retain(|item| sets.iter().all(|set| set.contains(item)));
+
     result
 }
 
@@ -37,9 +52,10 @@ fn find_overlap(rucksacks: &str) -> u8 {
         (bag_one.bytes().collect(), bag_two.bytes().collect())
     };
 
-    let union: Vec<_> = set_one.intersection(&set_two).collect();
-    assert_eq!(union.len(), 1);
-    let item = union.first().unwrap();
+    let item = intersect_all(vec![set_one, set_two]);
+    let item = item.iter().collect::<Vec<_>>();
+    let item = item.first().unwrap();
+
     priority(item)
 }
 
