@@ -70,11 +70,11 @@ pub fn find_top_crates(file: &str, one_by_one: bool) -> String {
 
 #[cfg(test)]
 mod tests {
-    use crate::{day05, fetch};
+    use crate::{day05, fetch_input};
 
     #[test]
     fn find_top_crates() {
-        fetch::input(5);
+        fetch_input(5);
 
         let tests = vec![
             ("example/day05.txt", "CMZ", true),

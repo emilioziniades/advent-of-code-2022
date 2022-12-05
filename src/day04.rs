@@ -39,11 +39,11 @@ fn parse_ranges(line: &str) -> (HashSet<i32>, HashSet<i32>) {
 
 #[cfg(test)]
 mod tests {
-    use crate::{day04, fetch};
+    use crate::{day04, fetch_input};
 
     #[test]
     fn compare_assignments_subsets() {
-        fetch::input(4);
+        fetch_input(4);
 
         let tests = vec![("example/day04.txt", 2), ("input/day04.txt", 569)];
 
@@ -56,7 +56,7 @@ mod tests {
 
     #[test]
     fn compare_assignments_overlaps() {
-        fetch::input(4);
+        fetch_input(4);
 
         let tests = vec![("example/day04.txt", 4), ("input/day04.txt", 936)];
 

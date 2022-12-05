@@ -20,11 +20,11 @@ pub fn max_calories(file: &str, n_elves: usize) -> i32 {
 
 #[cfg(test)]
 mod tests {
-    use crate::{day01, fetch};
+    use crate::{day01, fetch_input};
 
     #[test]
     fn max_calories_elf() {
-        fetch::input(1);
+        fetch_input(1);
 
         let tests = vec![
             ("example/day01.txt", 24000, 1),

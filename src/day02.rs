@@ -169,12 +169,12 @@ mod tests {
     use crate::{
         day02,
         day02::{C, G},
-        fetch,
+        fetch_input,
     };
 
     #[test]
     fn count_total_score() {
-        fetch::input(2);
+        fetch_input(2);
 
         let tests = vec![("example/day02.txt", 15), ("input/day02.txt", 8392)];
 
@@ -213,7 +213,7 @@ mod tests {
 
     #[test]
     fn count_total_score_with_other_encoding() {
-        fetch::input(2);
+        fetch_input(2);
 
         let tests = vec![("example/day02.txt", 12), ("input/day02.txt", 10116)];
 
