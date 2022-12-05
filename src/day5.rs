@@ -77,10 +77,10 @@ mod tests {
         fetch::input(5);
 
         let tests = vec![
-            ("example/day5.txt", "CMZ", true),
-            ("input/day5.txt", "JCMHLVGMG", true),
-            ("example/day5.txt", "MCD", false),
-            ("input/day5.txt", "LVMRWSSPZ", false),
+            ("example/day05.txt", "CMZ", true),
+            ("input/day05.txt", "JCMHLVGMG", true),
+            ("example/day05.txt", "MCD", false),
+            ("input/day05.txt", "LVMRWSSPZ", false),
         ];
 
         for test in tests {

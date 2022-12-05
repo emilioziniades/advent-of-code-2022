@@ -172,15 +172,11 @@ mod tests {
         fetch,
     };
 
-    fn init() {
-        fetch::input(2);
-    }
-
     #[test]
     fn count_total_score() {
-        init();
+        fetch::input(2);
 
-        let tests = vec![("example/day2.txt", 15), ("input/day2.txt", 8392)];
+        let tests = vec![("example/day02.txt", 15), ("input/day02.txt", 8392)];
 
         for test in tests {
             let (file, want) = test;
@@ -217,9 +213,9 @@ mod tests {
 
     #[test]
     fn count_total_score_with_other_encoding() {
-        init();
+        fetch::input(2);
 
-        let tests = vec![("example/day2.txt", 12), ("input/day2.txt", 10116)];
+        let tests = vec![("example/day02.txt", 12), ("input/day02.txt", 10116)];
 
         for test in tests {
             let (file, want) = test;

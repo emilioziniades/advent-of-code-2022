@@ -2,7 +2,7 @@ use dotenv;
 use std::{env, fs, path::Path};
 
 pub fn input(day: i32) {
-    let filename = format!("input/day{day}.txt");
+    let filename = format!("input/day{day:0>#2}.txt");
     let file_exists = Path::new(&filename).exists();
     if !file_exists {
         let cookie = {

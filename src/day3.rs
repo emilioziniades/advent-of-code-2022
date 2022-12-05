@@ -72,15 +72,11 @@ fn priority(i: &u8) -> u8 {
 mod tests {
     use crate::{day3, fetch};
 
-    fn init() {
-        fetch::input(3);
-    }
-
     #[test]
     fn count_total_score() {
-        init();
+        fetch::input(3);
 
-        let tests = vec![("example/day3.txt", 157), ("input/day3.txt", 7793)];
+        let tests = vec![("example/day03.txt", 157), ("input/day03.txt", 7793)];
 
         for test in tests {
             let (file, want) = test;
@@ -91,9 +87,9 @@ mod tests {
 
     #[test]
     fn count_total_group_score() {
-        init();
+        fetch::input(3);
 
-        let tests = vec![("example/day3.txt", 70), ("input/day3.txt", 2499)];
+        let tests = vec![("example/day03.txt", 70), ("input/day03.txt", 2499)];
 
         for test in tests {
             let (file, want) = test;
