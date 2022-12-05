@@ -47,7 +47,6 @@ pub fn find_top_crates(file: &str, one_by_one: bool) -> String {
     }
 
     for (n_moves, from, to) in instructions {
-        if one_by_one {}
         let src = crates.get_mut(&from).unwrap();
         let mut items = src.split_off(src.len() - n_moves as usize);
         if one_by_one {
