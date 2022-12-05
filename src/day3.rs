@@ -70,8 +70,7 @@ fn priority(i: &u8) -> u8 {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use crate::fetch;
+    use crate::{day3, fetch};
 
     fn init() {
         fetch::input(3);
@@ -85,7 +84,7 @@ mod tests {
 
         for test in tests {
             let (file, want) = test;
-            let got = count_overlap_priority(file);
+            let got = day3::count_overlap_priority(file);
             assert_eq!(got, want, "got {got}, wanted {want}")
         }
     }
@@ -98,7 +97,7 @@ mod tests {
 
         for test in tests {
             let (file, want) = test;
-            let got = count_group_priority(file);
+            let got = day3::count_group_priority(file);
             assert_eq!(got, want, "got {got}, wanted {want}")
         }
     }

@@ -1,5 +1,4 @@
 use std::{collections::HashSet, fs, ops::Not};
-use text_io::scan;
 
 pub fn count_assignment_overlaps(
     file: &str,
@@ -26,8 +25,12 @@ pub fn has_overlap((set_one, set_two): &(HashSet<i32>, HashSet<i32>)) -> bool {
 }
 
 fn parse_ranges(line: &str) -> (HashSet<i32>, HashSet<i32>) {
-    let (start_one, end_one, start_two, end_two): (i32, i32, i32, i32);
-    scan!(line.bytes()=> "{}-{},{}-{}", start_one, end_one, start_two, end_two);
+    let numbers: Vec<i32> = line
+        .replace(',', "-")
+        .split('-')
+        .map(|n| n.parse().unwrap())
+        .collect();
+    let (start_one, end_one, start_two, end_two) = (numbers[0], numbers[1], numbers[2], numbers[3]);
     (
         HashSet::from_iter(start_one..end_one + 1),
         HashSet::from_iter(start_two..end_two + 1),
@@ -36,8 +39,7 @@ fn parse_ranges(line: &str) -> (HashSet<i32>, HashSet<i32>) {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use crate::fetch;
+    use crate::{day4, fetch};
 
     #[test]
     fn compare_assignments_subsets() {
@@ -47,7 +49,7 @@ mod tests {
 
         for test in tests {
             let (file, want) = test;
-            let got = count_assignment_overlaps(file, has_subset);
+            let got = day4::count_assignment_overlaps(file, day4::has_subset);
             assert_eq!(want, got, "want {want}, got {got}, for {file}");
         }
     }
@@ -60,7 +62,7 @@ mod tests {
 
         for test in tests {
             let (file, want) = test;
-            let got = count_assignment_overlaps(file, has_overlap);
+            let got = day4::count_assignment_overlaps(file, day4::has_overlap);
             assert_eq!(want, got, "want {want}, got {got}, for {file}");
         }
     }

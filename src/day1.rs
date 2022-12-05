@@ -20,8 +20,7 @@ pub fn max_calories(file: &str, n_elves: usize) -> i32 {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use crate::fetch;
+    use crate::{day1, fetch};
 
     fn init() {
         fetch::input(1);
@@ -40,7 +39,7 @@ mod tests {
 
         for test in tests {
             let (file, want, n_elves) = test;
-            let got = max_calories(file, n_elves);
+            let got = day1::max_calories(file, n_elves);
             assert_eq!(got, want, "got {got}, wanted {want}")
         }
     }
