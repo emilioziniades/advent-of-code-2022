@@ -167,8 +167,8 @@ pub fn total_score_alternative(file: &str) -> i32 {
 #[cfg(test)]
 mod tests {
     use crate::{
-        day2,
-        day2::{C, G},
+        day02,
+        day02::{C, G},
         fetch,
     };
 
@@ -180,7 +180,7 @@ mod tests {
 
         for test in tests {
             let (file, want) = test;
-            let got = day2::total_score(file);
+            let got = day02::total_score(file);
             assert_eq!(got, want, "got {got}, wanted {want}")
         }
     }
@@ -206,7 +206,7 @@ mod tests {
 
         for test in tests {
             let (input, want) = test;
-            let got = day2::parse_round_into_desired_outcome(input);
+            let got = day02::parse_round_into_desired_outcome(input);
             assert_eq!(want, got, "want {want:?}, got {got:?}")
         }
     }
@@ -219,7 +219,7 @@ mod tests {
 
         for test in tests {
             let (file, want) = test;
-            let got = day2::total_score_alternative(file);
+            let got = day02::total_score_alternative(file);
             assert_eq!(got, want, "got {got}, wanted {want}")
         }
     }

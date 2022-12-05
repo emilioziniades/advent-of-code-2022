@@ -70,7 +70,7 @@ pub fn find_top_crates(file: &str, one_by_one: bool) -> String {
 
 #[cfg(test)]
 mod tests {
-    use crate::{day5, fetch};
+    use crate::{day05, fetch};
 
     #[test]
     fn find_top_crates() {
@@ -85,7 +85,7 @@ mod tests {
 
         for test in tests {
             let (file, want, is_one_by_one) = test;
-            let got = day5::find_top_crates(file, is_one_by_one);
+            let got = day05::find_top_crates(file, is_one_by_one);
             assert_eq!(want, got, "want {want}, got {got}, for {file}");
         }
     }

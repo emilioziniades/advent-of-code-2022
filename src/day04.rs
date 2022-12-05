@@ -39,7 +39,7 @@ fn parse_ranges(line: &str) -> (HashSet<i32>, HashSet<i32>) {
 
 #[cfg(test)]
 mod tests {
-    use crate::{day4, fetch};
+    use crate::{day04, fetch};
 
     #[test]
     fn compare_assignments_subsets() {
@@ -49,7 +49,7 @@ mod tests {
 
         for test in tests {
             let (file, want) = test;
-            let got = day4::count_assignment_overlaps(file, day4::has_subset);
+            let got = day04::count_assignment_overlaps(file, day04::has_subset);
             assert_eq!(want, got, "want {want}, got {got}, for {file}");
         }
     }
@@ -62,7 +62,7 @@ mod tests {
 
         for test in tests {
             let (file, want) = test;
-            let got = day4::count_assignment_overlaps(file, day4::has_overlap);
+            let got = day04::count_assignment_overlaps(file, day04::has_overlap);
             assert_eq!(want, got, "want {want}, got {got}, for {file}");
         }
     }

@@ -70,7 +70,7 @@ fn priority(i: &u8) -> u8 {
 
 #[cfg(test)]
 mod tests {
-    use crate::{day3, fetch};
+    use crate::{day03, fetch};
 
     #[test]
     fn count_total_score() {
@@ -80,7 +80,7 @@ mod tests {
 
         for test in tests {
             let (file, want) = test;
-            let got = day3::count_overlap_priority(file);
+            let got = day03::count_overlap_priority(file);
             assert_eq!(got, want, "got {got}, wanted {want}")
         }
     }
@@ -93,7 +93,7 @@ mod tests {
 
         for test in tests {
             let (file, want) = test;
-            let got = day3::count_group_priority(file);
+            let got = day03::count_group_priority(file);
             assert_eq!(got, want, "got {got}, wanted {want}")
         }
     }
