@@ -43,7 +43,7 @@ mod tests {
     fn compare_assignments_subsets() {
         fetch::input(4);
 
-        let tests = vec![("src/day4/example.txt", 2), ("src/day4/input.txt", 569)];
+        let tests = vec![("example/day4.txt", 2), ("input/day4.txt", 569)];
 
         for test in tests {
             let (file, want) = test;
@@ -56,7 +56,7 @@ mod tests {
     fn compare_assignments_overlaps() {
         fetch::input(4);
 
-        let tests = vec![("src/day4/example.txt", 4), ("src/day4/input.txt", 936)];
+        let tests = vec![("example/day4.txt", 4), ("input/day4.txt", 936)];
 
         for test in tests {
             let (file, want) = test;

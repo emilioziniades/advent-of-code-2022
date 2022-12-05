@@ -32,10 +32,10 @@ mod tests {
         init();
 
         let tests = vec![
-            ("src/day1/example.txt", 24000, 1),
-            ("src/day1/example.txt", 45000, 3),
-            ("src/day1/input.txt", 69693, 1),
-            ("src/day1/input.txt", 200945, 3),
+            ("example/day1.txt", 24000, 1),
+            ("example/day1.txt", 45000, 3),
+            ("input/day1.txt", 69693, 1),
+            ("input/day1.txt", 200945, 3),
         ];
 
         for test in tests {

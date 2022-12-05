@@ -177,7 +177,7 @@ mod tests {
     fn count_total_score() {
         init();
 
-        let tests = vec![("src/day2/example.txt", 15), ("src/day2/input.txt", 8392)];
+        let tests = vec![("example/day2.txt", 15), ("input/day2.txt", 8392)];
 
         for test in tests {
             let (file, want) = test;
@@ -216,7 +216,7 @@ mod tests {
     fn count_total_score_with_other_encoding() {
         init();
 
-        let tests = vec![("src/day2/example.txt", 12), ("src/day2/input.txt", 10116)];
+        let tests = vec![("example/day2.txt", 12), ("input/day2.txt", 10116)];
 
         for test in tests {
             let (file, want) = test;
