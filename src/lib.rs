@@ -7,6 +7,8 @@ pub mod day06;
 
 use std::{env, fs, path::Path};
 
+use ureq::get;
+
 pub fn fetch_input(day: i32) {
     let filename = format!("input/day{day:0>#2}.txt");
     let file_exists = Path::new(&filename).exists();
@@ -19,14 +21,12 @@ pub fn fetch_input(day: i32) {
 
         let response = {
             let url = format!("https://adventofcode.com/2022/day/{day}/input");
-            let client = reqwest::blocking::Client::new();
-            client
-                .get(url)
-                .header("Cookie", cookie)
-                .send()
-                .unwrap()
-                .text()
-                .unwrap()
+            get(&url)
+                .set("Cookie", &cookie)
+                .call()
+                .expect("call succeeds")
+                .into_string()
+                .expect("body is parsed")
         };
 
         fs::write(filename, response).unwrap();
