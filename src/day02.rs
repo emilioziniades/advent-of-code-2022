@@ -1,4 +1,3 @@
-use itertools::Itertools;
 use std::{collections::HashMap, fs};
 
 #[derive(Debug, PartialEq)]
@@ -86,7 +85,10 @@ fn parse_round_into_choice(s: &str) -> Game {
     encodings.insert("Y", C::Paper);
     encodings.insert("Z", C::Scissors);
 
-    let (i, j) = s.split_whitespace().collect_tuple().unwrap();
+    let (i, j) = {
+        let choices: Vec<&str> = s.split_whitespace().collect();
+        (choices[0], choices[1])
+    };
 
     Game {
         me: encodings.remove(j).unwrap(),
@@ -108,7 +110,10 @@ fn parse_round_into_desired_outcome(s: &str) -> Game {
     encoding_outcome.insert("Y", O::Draw);
     encoding_outcome.insert("Z", O::Win);
 
-    let (i, j) = s.split_whitespace().collect_tuple().unwrap();
+    let (i, j) = {
+        let choices: Vec<&str> = s.split_whitespace().collect();
+        (choices[0], choices[1])
+    };
 
     let your_choice = encoding_choice.remove(i).unwrap();
     let desired_outcome = encoding_outcome.remove(j).unwrap();

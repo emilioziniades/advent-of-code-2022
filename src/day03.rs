@@ -1,7 +1,5 @@
 use std::{collections::HashSet, fs};
 
-use itertools::Itertools;
-
 pub fn count_overlap_priority(file: &str) -> i32 {
     fs::read_to_string(file)
         .unwrap()
@@ -14,12 +12,12 @@ pub fn count_group_priority(file: &str) -> i32 {
     fs::read_to_string(file)
         .unwrap()
         .lines()
+        .collect::<Vec<_>>()
         .chunks(3)
-        .into_iter()
         .map(|group| {
             intersect_all(
                 group
-                    .into_iter()
+                    .iter()
                     .map(|row| row.bytes().collect::<HashSet<u8>>())
                     .collect::<Vec<_>>(),
             )
