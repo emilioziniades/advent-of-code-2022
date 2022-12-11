@@ -3,6 +3,10 @@ use std::fs;
 use std::hash::BuildHasher;
 use std::hash::Hasher;
 
+const SMALL_DIR_SIZE: u64 = 100_000;
+const DISK_SIZE: u64 = 70_000_000;
+const FREE_SPACE_REQUIRED: u64 = 30_000_000;
+
 #[derive(Debug)]
 pub enum FileSystemItem {
     Directory(Directory),
@@ -101,7 +105,12 @@ fn id() -> Id {
     RandomState::new().build_hasher().finish()
 }
 
-pub fn sum_small_dirs(file: &str) -> u32 {
+struct DirectoryData {
+    name: String,
+    size: u64,
+}
+
+fn collect_directory_data(file: &str) -> Vec<DirectoryData> {
     let commands = fs::read_to_string(file).expect("file exists");
     let commands = commands
         .lines()
@@ -146,9 +155,40 @@ pub fn sum_small_dirs(file: &str) -> u32 {
     let dirs: &mut Vec<&Directory> = &mut Vec::new();
     root.find_dirs(dirs);
     dirs.iter()
-        .map(|dir| dir.size())
-        .filter(|size| size < &100_000)
+        .map(|dir| DirectoryData {
+            name: dir.name.clone(),
+            size: dir.size().into(),
+        })
+        .collect()
+}
+
+pub fn sum_small_dirs(filename: &str) -> u64 {
+    let dirs = collect_directory_data(filename);
+
+    dirs.iter()
+        .filter_map(|dir| match dir.size < SMALL_DIR_SIZE {
+            true => Some(dir.size),
+            false => None,
+        })
         .sum()
+}
+
+pub fn delete_directory(filename: &str) -> u64 {
+    let mut dirs = collect_directory_data(filename);
+    dirs.sort_by(|dir_a, dir_b| dir_a.size.cmp(&dir_b.size));
+
+    let root_dir = dirs.pop().unwrap();
+    assert_eq!(root_dir.name, "/");
+
+    let free_space = DISK_SIZE - root_dir.size;
+
+    dirs.iter()
+        .filter_map(|dir| match free_space + dir.size > FREE_SPACE_REQUIRED {
+            true => Some(dir.size),
+            false => None,
+        })
+        .min()
+        .unwrap()
 }
 
 #[cfg(test)]
@@ -167,6 +207,22 @@ mod tests {
         for test in tests {
             let (file, want) = test;
             let got = day07::sum_small_dirs(file);
+            assert_eq!(got, want, "got {}, wanted {}", got, want)
+        }
+    }
+
+    #[test]
+    fn delete_directory() {
+        fetch_input(7);
+
+        let tests = vec![
+            ("example/day07.txt", 24_933_642),
+            ("input/day07.txt", 6_400_111),
+        ];
+
+        for test in tests {
+            let (file, want) = test;
+            let got = day07::delete_directory(file);
             assert_eq!(got, want, "got {}, wanted {}", got, want)
         }
     }
