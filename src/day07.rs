@@ -27,7 +27,7 @@ impl File {
 #[derive(Debug)]
 pub struct Directory {
     id: Id,
-    parent: Option<Id>,
+    parent_id: Option<Id>,
     name: String,
     children: Vec<FileSystemItem>,
 }
@@ -35,7 +35,7 @@ pub struct Directory {
 impl Directory {
     fn new(name: &str, parent: Option<Id>) -> Self {
         Directory {
-            parent,
+            parent_id: parent,
             name: name.to_string(),
             children: Vec::new(),
             id: id(),
@@ -47,7 +47,6 @@ impl Directory {
     }
 
     fn chdir(&mut self, name: &str) -> &mut Self {
-        // println!("{self:#?}");
         let child_index = self
             .children
             .iter()
@@ -63,22 +62,16 @@ impl Directory {
         }
     }
 
-    fn find(&mut self, id: Id) -> Option<&mut Self> {
-        println!("searching {}", self.name);
-        if self.name == "/" {
-            println!("{self:#?}");
-        }
-
+    fn find<'a>(&'a mut self, id: Id, result: &mut Option<&'a mut Self>) {
         if self.id == id {
-            return Some(self);
+            *result = Some(self);
+            return;
         }
-
         for child in &mut self.children {
             if let FileSystemItem::Directory(child) = child {
-                return child.find(id);
+                child.find(id, result);
             }
         }
-        None
     }
 
     fn size(&self) -> u32 {
@@ -120,12 +113,17 @@ pub fn sum_small_dirs(file: &str) -> u32 {
     let mut cwd = &mut root;
 
     for command in commands {
-        println!("{command:?}");
         match command[..] {
             ["$", "cd", ".."] => {
-                let parent_id = cwd.parent.unwrap();
-                let msg = format!("directory ({}) has parent ({})", cwd.id, parent_id);
-                let parent = root.find(parent_id).expect(&msg);
+                let parent_id = cwd.parent_id.unwrap();
+                let mut parent = None;
+                root.find(parent_id, &mut parent);
+                let parent = match parent {
+                    Some(parent) => parent,
+                    None => {
+                        panic!("directory should have parent");
+                    }
+                };
                 cwd = parent;
             }
             ["$", "cd", location] => {
@@ -161,8 +159,10 @@ mod tests {
     fn sum_small_dirs() {
         fetch_input(7);
 
-        let tests = vec![("example/day07.txt", 95_437)];
-        // let tests = vec![("example/day07.txt", 95_437), ("input/day07.txt", 0)];
+        let tests = vec![
+            ("example/day07.txt", 95_437),
+            ("input/day07.txt", 1_491_614),
+        ];
 
         for test in tests {
             let (file, want) = test;
