@@ -188,35 +188,25 @@ pub fn measure_monkey_business(
 
 #[cfg(test)]
 mod tests {
-    use crate::day11;
+    use crate::day11::{self, WorryManagement};
     use crate::fetch_input;
 
     #[test]
     fn measure_monkey_business() {
         fetch_input(11);
         let tests = vec![
-            (
-                "example/day11.txt",
-                20,
-                day11::WorryManagement::DivByThree,
-                10605,
-            ),
-            (
-                "input/day11.txt",
-                20,
-                day11::WorryManagement::DivByThree,
-                58056,
-            ),
+            ("example/day11.txt", 20, WorryManagement::DivByThree, 10605),
+            ("input/day11.txt", 20, WorryManagement::DivByThree, 58056),
             (
                 "example/day11.txt",
                 10_000,
-                day11::WorryManagement::ModProductPrimes,
+                WorryManagement::ModProductPrimes,
                 2713310158,
             ),
             (
                 "input/day11.txt",
                 10_000,
-                day11::WorryManagement::ModProductPrimes,
+                WorryManagement::ModProductPrimes,
                 15048718170,
             ),
         ];
