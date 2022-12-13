@@ -1,13 +1,11 @@
-use std::{collections::VecDeque, fs};
+use std::{collections::VecDeque, fs, iter};
 
-#[derive(Debug)]
 struct Monkey {
-    items: VecDeque<u32>,
-    operation: String,
-    test_divisor: u32,
+    items: VecDeque<usize>,
+    operation: Box<dyn Fn(usize) -> usize>,
+    test_divisor: usize,
     test_true_monkey: usize,
     test_false_monkey: usize,
-    // test: fn(monk),
 }
 
 impl Monkey {
@@ -23,7 +21,7 @@ impl Monkey {
         let mut lines = lines.lines().skip(1); // skip "Monkey n:"
 
         let items = lines.next().expect("another line");
-        let items: VecDeque<u32> = items
+        let items: VecDeque<usize> = items
             .trim()
             .strip_prefix("Starting items: ")
             .expect("starts with Starting items:")
@@ -36,12 +34,23 @@ impl Monkey {
             .next()
             .expect("another line")
             .trim()
-            .strip_prefix("Operation:")
+            .strip_prefix("Operation: new = old ")
             .expect("starts with Operation:")
-            .trim()
-            .to_string();
+            .split_whitespace()
+            .collect::<Vec<&str>>();
 
-        let test_divisor: u32 = lines
+        let operator = operation[0];
+        let operand = operation[1].parse().unwrap_or(0);
+
+        let operation: Box<dyn Fn(usize) -> usize> = match (operator, operand) {
+            ("*", 0) => Box::new(|old| old * old),
+            ("+", 0) => Box::new(|old| old + old),
+            ("*", n) => Box::new(move |old| old * n),
+            ("+", n) => Box::new(move |old| old + n),
+            _ => panic!("unrecognized operation"),
+        };
+
+        let test_divisor: usize = lines
             .next()
             .expect("another line")
             .trim()
@@ -76,51 +85,60 @@ impl Monkey {
             test_false_monkey,
         }
     }
-
-    fn do_operation(&self, old: u32) -> u32 {
-        let operation: Vec<&str> = self.operation.split_whitespace().collect();
-        match operation[..] {
-            ["new", "=", "old", "*", "old"] => old * old,
-            ["new", "=", "old", "+", "old"] => old + old,
-            ["new", "=", "old", "*", n] => {
-                let n: u32 = n.parse().expect("a number");
-                old * n
-            }
-            ["new", "=", "old", "+", n] => {
-                let n: u32 = n.parse().expect("a number");
-                old + n
-            }
-            [..] => panic!("unrecognized operation {operation:?}"),
-        }
-    }
 }
 
-#[derive(Debug)]
 struct Monkeys {
     m: Vec<Monkey>,
-    count: Vec<u32>,
+    count: Vec<usize>,
+    prime_product: usize,
 }
 
 impl Monkeys {
     fn from(filename: &str) -> Self {
-        let monkeys = fs::read_to_string(filename).unwrap();
-        let monkeys: Vec<Monkey> = monkeys.split("\n\n").map(Monkey::from).collect();
+        let monkeys: Vec<Monkey> = fs::read_to_string(filename)
+            .unwrap()
+            .split("\n\n")
+            .map(Monkey::from)
+            .collect();
+
         let n_monkeys = monkeys.len();
+
+        let prime_product = monkeys
+            .iter()
+            .map(|m| m.test_divisor)
+            .reduce(|a, b| a * b)
+            .unwrap();
+
         Self {
             m: monkeys,
-            count: (0..n_monkeys).map(|_| 0).collect(),
+            count: iter::repeat(0).take(n_monkeys).collect(),
+            prime_product,
         }
     }
-    fn do_round(&mut self, div_by_three: bool) {
+
+    fn do_rounds(&mut self, n: usize, worry_management: WorryManagement) {
+        match worry_management {
+            WorryManagement::DivByThree => {
+                for _ in 0..n {
+                    self.do_round_div_three();
+                }
+            }
+            WorryManagement::ModProductPrimes => {
+                for _ in 0..n {
+                    self.do_round_mod_prime();
+                }
+            }
+        }
+    }
+
+    fn do_round_div_three(&mut self) {
         for i in 0..self.m.len() {
             while let Some(old_item) = self.m[i].items.pop_front() {
                 self.count[i] += 1;
 
-                let mut new_item = self.m[i].do_operation(old_item);
+                let mut new_item = (self.m[i].operation)(old_item);
 
-                if div_by_three {
-                    new_item /= 3;
-                }
+                new_item /= 3;
 
                 let target_monkey_id = match new_item % self.m[i].test_divisor == 0 {
                     true => self.m[i].test_true_monkey,
@@ -132,16 +150,38 @@ impl Monkeys {
         }
     }
 
-    fn do_rounds(&mut self, n: u32, div_by_three: bool) {
-        for _ in 0..n {
-            self.do_round(div_by_three);
+    fn do_round_mod_prime(&mut self) {
+        for i in 0..self.m.len() {
+            while let Some(old_item) = self.m[i].items.pop_front() {
+                self.count[i] += 1;
+
+                let mut new_item = (self.m[i].operation)(old_item);
+
+                new_item %= self.prime_product;
+
+                let target_monkey_id = match new_item % self.m[i].test_divisor == 0 {
+                    true => self.m[i].test_true_monkey,
+                    false => self.m[i].test_false_monkey,
+                };
+
+                self.m[target_monkey_id].items.push_back(new_item);
+            }
         }
     }
 }
 
-pub fn measure_monkey_business(filename: &str, n_rounds: u32, div_by_three: bool) -> u32 {
+pub enum WorryManagement {
+    DivByThree,
+    ModProductPrimes,
+}
+
+pub fn measure_monkey_business(
+    filename: &str,
+    n_rounds: usize,
+    worry_management: WorryManagement,
+) -> usize {
     let mut monkeys = Monkeys::from(filename);
-    monkeys.do_rounds(n_rounds, div_by_three);
+    monkeys.do_rounds(n_rounds, worry_management);
     monkeys.count.sort_by(|a, b| b.cmp(a));
     monkeys.count[0] * monkeys.count[1]
 }
@@ -155,13 +195,35 @@ mod tests {
     fn measure_monkey_business() {
         fetch_input(11);
         let tests = vec![
-            ("example/day11.txt", 20, true, 10605),
-            ("input/day11.txt", 20, true, 58056),
+            (
+                "example/day11.txt",
+                20,
+                day11::WorryManagement::DivByThree,
+                10605,
+            ),
+            (
+                "input/day11.txt",
+                20,
+                day11::WorryManagement::DivByThree,
+                58056,
+            ),
+            (
+                "example/day11.txt",
+                10_000,
+                day11::WorryManagement::ModProductPrimes,
+                2713310158,
+            ),
+            (
+                "input/day11.txt",
+                10_000,
+                day11::WorryManagement::ModProductPrimes,
+                15048718170,
+            ),
         ];
 
         for test in tests {
-            let (filename, n_rounds, div_by_three, want) = test;
-            let got = day11::measure_monkey_business(filename, n_rounds, div_by_three);
+            let (filename, n_rounds, worry_management, want) = test;
+            let got = day11::measure_monkey_business(filename, n_rounds, worry_management);
 
             assert_eq!(got, want, "got {got}, wanted {want}, for {filename}");
         }
