@@ -49,13 +49,13 @@ impl Graph {
         grid[end.y][end.x] = Z;
 
         for (y, row) in grid.iter().enumerate() {
-            for (x, letter) in row.iter().enumerate() {
+            for (x, current) in row.iter().enumerate() {
                 let current_pt = Point::new(x, y);
 
                 let current_neighbours: Vec<Point> = current_pt
                     .neighbours(cols, rows)
                     .into_iter()
-                    .filter(|pt| grid[pt.y][pt.x] <= letter + 1)
+                    .filter(|neighbour| grid[neighbour.y][neighbour.x] <= current + 1)
                     .collect();
 
                 neighbours.insert(current_pt, current_neighbours);
@@ -69,8 +69,55 @@ impl Graph {
         }
     }
 
+    // swap start and end
+    fn from_file_inverted(filename: &str) -> Self {
+        let file = fs::read_to_string(filename).expect("file exists");
+        let mut grid: Vec<Vec<u8>> = file.lines().map(|line| line.as_bytes().to_vec()).collect();
+
+        let rows = grid.len();
+        let cols = grid[0].len();
+
+        let mut start = Point::new(0, 0);
+        let mut end = Point::new(0, 0);
+        let mut neighbours: HashMap<Point, Vec<Point>> = HashMap::new();
+        for (y, row) in grid.iter().enumerate() {
+            for (x, letter) in row.iter().enumerate() {
+                if letter == &S {
+                    end = Point::new(x, y) // flipped
+                }
+                if letter == &E {
+                    start = Point::new(x, y); // flipped
+                }
+            }
+        }
+
+        grid[start.y][start.x] = Z; // flipped
+        grid[end.y][end.x] = A; // flipped
+
+        for (y, row) in grid.iter().enumerate() {
+            for (x, current) in row.iter().enumerate() {
+                let current_pt = Point::new(x, y);
+
+                let current_neighbours: Vec<Point> = current_pt
+                    .neighbours(cols, rows)
+                    .into_iter()
+                    // now we can only go down instead of up
+                    .filter(|neighbour| grid[neighbour.y][neighbour.x] + 1 >= *current)
+                    //      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ flipped this
+                    .collect();
+
+                neighbours.insert(current_pt, current_neighbours);
+            }
+        }
+
+        Self {
+            neighbours,
+            start,
+            end,
+        }
+    }
     // A-star with manhattan distance as heuristic
-    fn find_shortest_path(&self) -> Vec<Point> {
+    fn find_shortest_path(&self, search_type: SearchType) -> SolvedPath {
         let mut frontier: PriorityQueue<Point> = PriorityQueue::new();
         frontier.push(self.start, 0);
 
@@ -80,7 +127,7 @@ impl Graph {
         cost_so_far.insert(self.start, 0);
 
         while let Some(current) = frontier.pop() {
-            if current == self.end {
+            if current == self.end && search_type == SearchType::EarlyExit {
                 break;
             }
 
@@ -101,20 +148,7 @@ impl Graph {
             }
         }
 
-        self.recreate_path(&mut came_from)
-    }
-
-    fn recreate_path(&self, came_from: &mut HashMap<Point, Point>) -> Vec<Point> {
-        let mut current = self.end;
-        let mut path: Vec<Point> = Vec::new();
-        while current != self.start {
-            path.push(current);
-            current = *came_from.get(&current).unwrap();
-        }
-
-        path.push(self.start);
-
-        path
+        SolvedPath { cost_so_far }
     }
 }
 
@@ -152,9 +186,47 @@ impl Point {
     }
 }
 
+struct SolvedPath {
+    cost_so_far: HashMap<Point, usize>,
+}
+
+#[derive(PartialEq, Eq)]
+enum SearchType {
+    EarlyExit,
+    FullSearch,
+}
+
+fn find_possible_starts(filename: &str) -> Vec<Point> {
+    let file = fs::read_to_string(filename).expect("file exists");
+    let grid: Vec<Vec<u8>> = file.lines().map(|line| line.as_bytes().to_vec()).collect();
+    let mut starts: Vec<Point> = Vec::new();
+
+    for (y, row) in grid.iter().enumerate() {
+        for (x, letter) in row.iter().enumerate() {
+            if letter == &S || letter == &A {
+                starts.push(Point::new(x, y));
+            }
+        }
+    }
+
+    starts
+}
+
 pub fn find_shortest_path(filename: &str) -> usize {
     let graph = Graph::from_file(filename);
-    graph.find_shortest_path().len() - 1
+    let mut solution = graph.find_shortest_path(SearchType::EarlyExit);
+    solution.cost_so_far.remove(&graph.end).unwrap()
+}
+
+pub fn find_best_starting_position(filename: &str) -> usize {
+    let graph = Graph::from_file_inverted(filename);
+    let mut solution = graph.find_shortest_path(SearchType::FullSearch);
+
+    find_possible_starts(filename)
+        .into_iter()
+        .filter_map(|start| solution.cost_so_far.remove(&start))
+        .min()
+        .unwrap()
 }
 
 #[cfg(test)]
@@ -170,6 +242,19 @@ mod tests {
         for test in tests {
             let (filename, want) = test;
             let got = day12::find_shortest_path(filename);
+
+            assert_eq!(got, want, "got {got}, wanted {want}, for {filename}");
+        }
+    }
+
+    #[test]
+    fn find_best_starting_position() {
+        fetch_input(12);
+        let tests = vec![("example/day12.txt", 29), ("input/day12.txt", 451)];
+
+        for test in tests {
+            let (filename, want) = test;
+            let got = day12::find_best_starting_position(filename);
 
             assert_eq!(got, want, "got {got}, wanted {want}, for {filename}");
         }
