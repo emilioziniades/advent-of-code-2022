@@ -1,6 +1,6 @@
 use std::{cmp, cmp::Ordering, fs};
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 enum Packet {
     List(Vec<Packet>),
     Number(u32),
@@ -86,6 +86,12 @@ impl PartialOrd for Packet {
     }
 }
 
+impl Ord for Packet {
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.partial_cmp(other).unwrap()
+    }
+}
+
 fn parse(tokens: &mut Vec<String>, list: &mut Packet) {
     if let Packet::List(list) = list {
         while let Some(next) = tokens.pop() {
@@ -158,6 +164,29 @@ pub fn sum_ordered_pairs(filename: &str) -> usize {
         .sum()
 }
 
+pub fn sort_all_packets(filename: &str) -> usize {
+    let divider_start = Packet::from("[[2]]");
+    let divider_end = Packet::from("[[6]]");
+    let packets = fs::read_to_string(filename).unwrap();
+    let mut packets: Vec<Packet> = packets
+        .lines()
+        .filter(|line| !line.is_empty())
+        .map(Packet::from)
+        .collect();
+
+    packets.push(divider_start.clone());
+    packets.push(divider_end.clone());
+    packets.sort();
+
+    let mut packets = packets.iter();
+
+    let divider_start = packets.position(|packet| packet == &divider_start).unwrap() + 1;
+    let divider_end =
+        packets.position(|packet| packet == &divider_end).unwrap() + divider_start + 1;
+
+    divider_start * divider_end
+}
+
 #[cfg(test)]
 mod tests {
     use crate::day13;
@@ -171,6 +200,19 @@ mod tests {
         for test in tests {
             let (filename, want) = test;
             let got = day13::sum_ordered_pairs(filename);
+
+            assert_eq!(got, want, "got {got}, wanted {want}, for {filename}");
+        }
+    }
+
+    #[test]
+    fn sort_all_packets() {
+        fetch_input(13);
+        let tests = vec![("example/day13.txt", 140), ("input/day13.txt", 23520)];
+
+        for test in tests {
+            let (filename, want) = test;
+            let got = day13::sort_all_packets(filename);
 
             assert_eq!(got, want, "got {got}, wanted {want}, for {filename}");
         }
