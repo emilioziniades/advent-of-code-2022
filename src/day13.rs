@@ -1,7 +1,6 @@
-use std::fs;
-// use std::{cmp::Ordering, fs};
+use std::{cmp, cmp::Ordering, fs};
 
-#[derive(Debug, PartialEq, PartialOrd)]
+#[derive(Debug, Clone)]
 enum Packet {
     List(Vec<Packet>),
     Number(u32),
@@ -18,57 +17,7 @@ impl Packet {
 
         root
     }
-    /*
-    fn recursive_partial_cmp(
-        &self,
-        other: &Packet,
-        order: &mut Option<Ordering>,
-        escape: &mut bool,
-    ) {
-        if *escape {
-            return;
-        }
-        match (self, other) {
-            (Packet::Number(s), Packet::Number(o)) => {
-                order = &mut s.partial_cmp(o).clone();
-                match order {
-                    Some(Ordering::Greater) | Some(Ordering::Less) => {
-                        *escape = true;
-                        return;
-                    }
-                    _ => (),
-                }
-            }
-            (Packet::List(s), Packet::List(o)) => {
-                for (index, item) in s.iter().enumerate() {
-                    item.recursive_partial_cmp(&o[index], order, escape)
-                }
-            }
-            (Packet::List(_s), Packet::Number(_o)) => todo!(),
-            (Packet::Number(_s), Packet::List(_o)) => todo!(),
-        }
-    }
-    */
 }
-
-/*
-impl PartialEq for Packet {
-    fn eq(&self, _other: &Self) -> bool {
-        // packets will never be exactly equal
-        false
-    }
-}
-
-impl PartialOrd for Packet {
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        let mut order = None;
-        let mut escape = false;
-        self.recursive_partial_cmp(other, &mut order, &mut escape);
-        println!("{order:?}");
-        order
-    }
-}
-*/
 
 fn parse(tokens: &mut Vec<String>, list: &mut Packet) {
     if let Packet::List(list) = list {
@@ -120,6 +69,70 @@ fn tokenize(line: &str) -> Vec<String> {
     tokens
 }
 
+fn compare(left: &Packet, right: &Packet) -> Ordering {
+    let mut exit = false;
+    let mut order = Ordering::Equal;
+    compare_recursive(left, right, &mut exit, &mut order);
+
+    println!("\n>>>>>>>>>>>>>>>>>>>>>>>>>  {order:?}\n");
+
+    order
+}
+fn compare_recursive(left: &Packet, right: &Packet, exit: &mut bool, order: &mut Ordering) {
+    if *exit {
+        return;
+    }
+    match (left, right) {
+        (Packet::List(left), Packet::List(right)) => {
+            let max_length = cmp::max(left.len(), right.len());
+            for i in 0..max_length {
+                if *exit {
+                    return;
+                }
+
+                let left = dbg!(left.get(i));
+                let right = dbg!(right.get(i));
+
+                match (left, right) {
+                    (Some(left), Some(right)) => compare_recursive(left, right, exit, order),
+                    (Some(_left), None) => {
+                        // right ran out of items first
+                        *order = Ordering::Greater;
+                        *exit = true;
+                        break;
+                    }
+                    (None, Some(_right)) => {
+                        // left ran out of items first
+                        *order = Ordering::Less;
+                        *exit = true;
+                        break;
+                    }
+                    (None, None) => panic!("exceeded both left and right vec lengths"),
+                }
+            }
+        }
+        (Packet::Number(l), Packet::Number(r)) => match dbg!(dbg!(l).cmp(dbg!(r))) {
+            Ordering::Equal => {}
+            Ordering::Less => {
+                *order = Ordering::Less;
+                *exit = true;
+            }
+            Ordering::Greater => {
+                *order = Ordering::Greater;
+                *exit = true;
+            }
+        },
+        (Packet::List(_), Packet::Number(_)) => {
+            let right = &Packet::List(vec![right.clone()]);
+            compare_recursive(left, right, exit, order)
+        }
+        (Packet::Number(_), Packet::List(_)) => {
+            let left = &Packet::List(vec![left.clone()]);
+            compare_recursive(left, right, exit, order)
+        }
+    }
+}
+
 pub fn sum_ordered_pairs(filename: &str) -> usize {
     let packet_pairs = fs::read_to_string(filename).unwrap();
     packet_pairs
@@ -129,18 +142,16 @@ pub fn sum_ordered_pairs(filename: &str) -> usize {
         .zip(1..packet_pairs.len() + 1)
         .map(|(pair, index)| {
             let (left, right) = {
-                let (left, right) = dbg!(pair.split_once('\n').unwrap());
+                let (left, right) = pair.split_once('\n').unwrap();
                 (dbg!(Packet::from(left)), dbg!(Packet::from(right)))
                 // (Packet::from(left), Packet::from(right))
             };
 
-            if left < right {
-                println!("index {index}: left < right");
-                index
-            } else {
-                println!("not less");
-                0
-            }
+            dbg!(match compare(&left, &right) {
+                Ordering::Less => index,
+                Ordering::Greater => 0,
+                Ordering::Equal => panic!("packets will never be equal"),
+            })
         })
         .sum()
 }
@@ -153,7 +164,7 @@ mod tests {
     #[test]
     fn sum_ordered_pairs() {
         fetch_input(13);
-        let tests = vec![("example/day13.txt", 13) /*("input/day13.txt", 0)*/];
+        let tests = vec![("example/day13.txt", 13), ("input/day13.txt", 6187)];
 
         for test in tests {
             let (filename, want) = test;
