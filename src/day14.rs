@@ -138,7 +138,7 @@ mod tests {
         }
     }
 
-    // #[test]
+    #[test]
     fn count_sand_with_floor() {
         fetch_input(14);
 
