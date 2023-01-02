@@ -25,6 +25,27 @@ pub fn count_sand(file: &str) -> usize {
     sands.len()
 }
 
+pub fn count_sand_with_floor(file: &str) -> usize {
+    let mut rocks = get_rocks(file);
+    let mut sands: HashSet<Point> = HashSet::new();
+
+    // add floor
+    let lowest_rock_height = rocks.iter().map(|point| point.y).max().unwrap();
+    let max_x = rocks.iter().map(|point| point.x).max().unwrap();
+    let floor_height = lowest_rock_height + 2;
+    let floor_rocks = (0..=(max_x * floor_height)).map(|x| Point::from(x, lowest_rock_height + 2));
+    rocks.extend(floor_rocks);
+
+    while let Some(sand) = fall(&rocks, &sands, floor_height) {
+        sands.insert(sand);
+        if sand == Point::from(500, 0) {
+            break;
+        }
+    }
+
+    sands.len()
+}
+
 fn fall(
     rocks: &HashSet<Point>,
     sands: &HashSet<Point>,
@@ -77,7 +98,6 @@ fn get_rocks(file: &str) -> HashSet<Point> {
             })
             .collect::<Vec<Point>>();
 
-        // println!("{rock_path:#?}");
         for points in rock_path.windows(2) {
             let (start, end) = (points[0], points[1]);
             if start.x == end.x && start.y < end.y {
@@ -114,6 +134,21 @@ mod tests {
         for test in tests {
             let (file, want) = test;
             let got = day14::count_sand(file);
+            assert_eq!(got, want, "got {got}, wanted {want}")
+        }
+    }
+
+    #[test]
+    fn count_sand_with_floor() {
+        fetch_input(14);
+
+        let tests = vec![
+            ("example/day14.txt", 93), /*, ("input/day14.txt", 1068)*/
+        ];
+
+        for test in tests {
+            let (file, want) = test;
+            let got = day14::count_sand_with_floor(file);
             assert_eq!(got, want, "got {got}, wanted {want}")
         }
     }
