@@ -1,6 +1,6 @@
 use std::{cmp, cmp::Ordering, fs};
 
-#[derive(Debug, Clone, PartialEq, Eq, Ord)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 enum Packet {
     List(Vec<Packet>),
     Number(u32),
@@ -18,7 +18,7 @@ impl Packet {
         root
     }
 
-    fn partial_cmp_recursive(&self, other: &Self, exit: &mut bool, order: &mut Option<Ordering>) {
+    fn partial_cmp_recursive(&self, other: &Self, exit: &mut bool, order: &mut Ordering) {
         if *exit {
             return;
         }
@@ -37,13 +37,13 @@ impl Packet {
                         (Some(left), Some(right)) => left.partial_cmp_recursive(right, exit, order),
                         (Some(_left), None) => {
                             // right ran out of items first
-                            *order = Some(Ordering::Greater);
+                            *order = Ordering::Greater;
                             *exit = true;
                             break;
                         }
                         (None, Some(_right)) => {
                             // left ran out of items first
-                            *order = Some(Ordering::Less);
+                            *order = Ordering::Less;
                             *exit = true;
                             break;
                         }
@@ -54,11 +54,11 @@ impl Packet {
 
             (Packet::Number(left), Packet::Number(right)) => match left.cmp(right) {
                 Ordering::Less => {
-                    *order = Some(Ordering::Less);
+                    *order = Ordering::Less;
                     *exit = true;
                 }
                 Ordering::Greater => {
-                    *order = Some(Ordering::Greater);
+                    *order = Ordering::Greater;
                     *exit = true;
                 }
                 Ordering::Equal => {}
@@ -77,12 +77,18 @@ impl Packet {
     }
 }
 
-impl PartialOrd for Packet {
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+impl Ord for Packet {
+    fn cmp(&self, other: &Self) -> Ordering {
         let mut exit = false;
-        let mut order = None;
+        let mut order = Ordering::Equal;
         self.partial_cmp_recursive(other, &mut exit, &mut order);
         order
+    }
+}
+
+impl PartialOrd for Packet {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
     }
 }
 
