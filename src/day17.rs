@@ -1,8 +1,5 @@
 use std::{fmt, fs};
 
-const N_ROCKS: usize = 2022;
-const CHAMBER_WIDTH: usize = 7;
-
 #[derive(Debug)]
 struct Point {
     x: usize,
@@ -144,7 +141,7 @@ impl Chamber {
             RockShape::Square => 3 + 2,
         };
 
-        let mut rows_to_add = (0..n_rows).map(|_| vec![false; CHAMBER_WIDTH]).collect();
+        let mut rows_to_add = (0..n_rows).map(|_| vec![false; 7]).collect();
 
         self.0.append(&mut rows_to_add);
     }
@@ -237,7 +234,7 @@ impl Direction {
     }
 }
 
-pub fn count_tower_height(file: &str) -> Option<usize> {
+pub fn count_tower_height(file: &str, n_rocks: usize) -> Option<usize> {
     let jet_flows = fs::read_to_string(file).expect("file exists");
     let mut jet_flows = jet_flows.trim().chars().map(Direction::from).cycle();
 
@@ -252,7 +249,7 @@ pub fn count_tower_height(file: &str) -> Option<usize> {
 
     let mut chamber = Chamber::new();
 
-    for _ in 0..N_ROCKS {
+    for _ in 0..n_rocks {
         let rock = rocks.next()?;
         chamber.add_empty_rows(rock);
         let mut rock = Rock::from(*rock, &chamber);
@@ -283,7 +280,24 @@ mod tests {
 
         for test in tests {
             let (file, want) = test;
-            let got = day17::count_tower_height(file).unwrap();
+            let got = day17::count_tower_height(file, 2022).unwrap();
+            assert_eq!(got, want, "got {got}, wanted {want}")
+        }
+    }
+
+    // #[test]
+    #[allow(dead_code)]
+    fn count_very_tall_tower_height() {
+        fetch_input(17);
+
+        let tests = vec![
+            ("example/day17.txt", 15142857142881),
+            ("input/day17.txt", 0),
+        ];
+
+        for test in tests {
+            let (file, want) = test;
+            let got = day17::count_tower_height(file, 1_000_000_000_000).unwrap();
             assert_eq!(got, want, "got {got}, wanted {want}")
         }
     }
