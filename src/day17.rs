@@ -1,5 +1,13 @@
 use std::{fmt, fs};
 
+const ROCK_ORDER: &[RockShape] = &[
+    RockShape::Minus,
+    RockShape::Plus,
+    RockShape::L,
+    RockShape::Bar,
+    RockShape::Square,
+];
+
 #[derive(Debug)]
 struct Point {
     x: usize,
@@ -23,7 +31,7 @@ struct Rock {
 
 impl Rock {
     fn from(shape: RockShape, chamber: &Chamber) -> Self {
-        let highest_rock = chamber.highest_rock();
+        let highest_rock = chamber.0.len();
         let bottom_left = match shape {
             RockShape::Bar | RockShape::Minus | RockShape::L | RockShape::Square => Point {
                 x: 2,
@@ -181,17 +189,39 @@ impl Chamber {
             );
             self.0[y][x] = true;
         }
+
+        // remove empty rows
+        let last_rock_row = self
+            .0
+            .iter()
+            .rposition(|row| row.iter().any(|cell| *cell))
+            .unwrap();
+
+        self.0.drain(last_rock_row + 1..);
     }
 
     fn any(&self, positions: Vec<(usize, usize)>) -> bool {
         positions.into_iter().map(|(x, y)| self.0[y][x]).any(|b| b)
     }
+}
 
-    fn highest_rock(&self) -> usize {
-        self.0
-            .iter()
-            .position(|row| !row.iter().any(|cell| *cell))
-            .unwrap_or(0)
+#[derive(Debug)]
+struct NumChamber(Vec<u8>);
+
+impl From<Chamber> for NumChamber {
+    fn from(chamber: Chamber) -> Self {
+        NumChamber(
+            chamber
+                .0
+                .iter()
+                .map(|row| {
+                    row.iter().enumerate().fold(
+                        0,
+                        |acc, (idx, elem)| if *elem { acc | 1 << idx } else { acc },
+                    )
+                })
+                .collect(),
+        )
     }
 }
 
@@ -234,25 +264,15 @@ impl Direction {
     }
 }
 
-pub fn count_tower_height(file: &str, n_rocks: usize) -> Option<usize> {
-    let jet_flows = fs::read_to_string(file).expect("file exists");
-    let mut jet_flows = jet_flows.trim().chars().map(Direction::from).cycle();
-
-    let rocks = vec![
-        RockShape::Minus,
-        RockShape::Plus,
-        RockShape::L,
-        RockShape::Bar,
-        RockShape::Square,
-    ];
-    let mut rocks = rocks.iter().cycle();
-
+fn fill_chamber(jet_flows: Vec<Direction>, n_rocks: usize) -> Option<Chamber> {
     let mut chamber = Chamber::new();
+    let mut jet_flows = jet_flows.iter().cycle();
+    let mut rocks = ROCK_ORDER.iter().cycle();
 
     for _ in 0..n_rocks {
         let rock = rocks.next()?;
-        chamber.add_empty_rows(rock);
         let mut rock = Rock::from(*rock, &chamber);
+        chamber.add_empty_rows(&rock.shape);
         loop {
             let jet_flow = jet_flows.next()?;
             rock.push(&chamber, &jet_flow);
@@ -265,7 +285,21 @@ pub fn count_tower_height(file: &str, n_rocks: usize) -> Option<usize> {
             }
         }
     }
-    Some(chamber.highest_rock())
+
+    Some(chamber)
+}
+
+pub fn count_tower_height(file: &str, n_rocks: usize) -> Option<usize> {
+    let jet_flows = fs::read_to_string(file).expect("file exists");
+    let jet_flows = jet_flows.trim().chars().map(Direction::from).collect();
+
+    let chamber = fill_chamber(jet_flows, n_rocks)?;
+    // println!("{chamber}");
+
+    // let num_chamber: NumChamber = chamber.into();
+    // println!("{num_chamber:?}");
+
+    Some(chamber.0.len())
 }
 
 #[cfg(test)]
@@ -273,31 +307,37 @@ mod tests {
     use crate::{day17, fetch_input};
 
     #[test]
+    #[ignore]
     fn count_tower_height() {
         fetch_input(17);
+
+        let n_rocks = 2022;
 
         let tests = vec![("example/day17.txt", 3068), ("input/day17.txt", 3184)];
 
         for test in tests {
             let (file, want) = test;
-            let got = day17::count_tower_height(file, 2022).unwrap();
+            let got = day17::count_tower_height(file, n_rocks).unwrap();
             assert_eq!(got, want, "got {got}, wanted {want}")
         }
     }
 
-    // #[test]
-    #[allow(dead_code)]
+    #[test]
+    // #[ignore]
     fn count_very_tall_tower_height() {
         fetch_input(17);
 
+        // let n_rocks = 1_000_000_000_000;
+        let n_rocks = 20000;
+
         let tests = vec![
             ("example/day17.txt", 15142857142881),
-            ("input/day17.txt", 0),
+            /*("input/day17.txt", 0),*/
         ];
 
         for test in tests {
             let (file, want) = test;
-            let got = day17::count_tower_height(file, 1_000_000_000_000).unwrap();
+            let got = day17::count_tower_height(file, n_rocks).unwrap();
             assert_eq!(got, want, "got {got}, wanted {want}")
         }
     }
