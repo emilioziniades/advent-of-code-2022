@@ -147,7 +147,6 @@ pub fn sum_ordered_pairs(filename: &str) -> usize {
     packet_pairs
         .trim_end()
         .split("\n\n")
-        .into_iter()
         .zip(1..packet_pairs.len() + 1)
         .map(|(pair, index)| {
             let (left, right) = {

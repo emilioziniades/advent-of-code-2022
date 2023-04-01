@@ -31,7 +31,7 @@ where
         let neighbours = graph.neighbours(current);
 
         for neighbour in neighbours {
-            if !came_from.0.contains_key(&neighbour) {
+            if !came_from.0.contains_key(neighbour) {
                 frontier.push(*neighbour);
                 came_from.0.insert(*neighbour, Some(current));
             }
@@ -62,7 +62,7 @@ where
             let current_cost = cost_so_far.get(&current).unwrap();
             let new_cost = current_cost + graph.cost(&current, neighbour);
             let neighbour_existing_cost = cost_so_far.get(neighbour).copied();
-            if !came_from.0.contains_key(&neighbour) || Some(new_cost) < neighbour_existing_cost {
+            if !came_from.0.contains_key(neighbour) || Some(new_cost) < neighbour_existing_cost {
                 frontier.push(*neighbour, new_cost);
                 came_from.0.insert(*neighbour, Some(current));
                 cost_so_far.insert(*neighbour, new_cost);

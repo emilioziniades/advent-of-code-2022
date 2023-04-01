@@ -275,7 +275,7 @@ fn fill_chamber(jet_flows: Vec<Direction>, n_rocks: usize) -> Option<Chamber> {
         chamber.add_empty_rows(&rock.shape);
         loop {
             let jet_flow = jet_flows.next()?;
-            rock.push(&chamber, &jet_flow);
+            rock.push(&chamber, jet_flow);
 
             if rock.touches_bottom(&chamber) {
                 chamber.update(rock);

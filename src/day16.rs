@@ -123,19 +123,19 @@ fn parse_input(file: &str) -> Volcano {
             let line: Vec<&str> = line.split_whitespace().collect();
 
             (
-                line[0].chars().nth(0).unwrap(),
-                line[1].clone().parse().unwrap(),
+                line[0].chars().next().unwrap(),
+                line[1].parse().unwrap(),
                 line[2]
-                    .split(",")
-                    .map(|valve| valve.chars().nth(0).unwrap())
+                    .split(',')
+                    .map(|valve| valve.chars().next().unwrap())
                     .collect(),
             )
         })
         .collect();
 
     for (valve, flow_rate, neighbours) in lines {
-        graph.insert(valve.clone(), neighbours);
-        flow_rates.insert(valve.clone(), flow_rate);
+        graph.insert(valve, neighbours);
+        flow_rates.insert(valve, flow_rate);
     }
 
     Volcano { graph, flow_rates }

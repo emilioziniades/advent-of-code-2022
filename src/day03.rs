@@ -22,7 +22,6 @@ pub fn count_group_priority(file: &str) -> i32 {
                     .collect::<Vec<_>>(),
             )
         })
-        .into_iter()
         .map(|set| priority(set.iter().next().unwrap()) as i32)
         .sum()
 }
