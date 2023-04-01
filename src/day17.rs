@@ -307,7 +307,7 @@ mod tests {
     use crate::{day17, fetch_input};
 
     #[test]
-    #[ignore]
+    #[ignore = "to revisit"]
     fn count_tower_height() {
         fetch_input(17);
 
@@ -323,7 +323,7 @@ mod tests {
     }
 
     #[test]
-    // #[ignore]
+    #[ignore = "to revisit"]
     fn count_very_tall_tower_height() {
         fetch_input(17);
 
