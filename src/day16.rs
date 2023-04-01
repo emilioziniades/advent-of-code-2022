@@ -1,97 +1,116 @@
 use std::{
-    collections::{HashMap, HashSet},
+    collections::{HashMap, VecDeque},
     fs,
 };
 
-use crate::pathfind::{self, recreate_all_paths, PathAlgo};
+const _MAX_MINUTES: u16 = 30;
 
-const A: u16 = 65;
-const MAX_MINUTES: u16 = 30;
-const OPEN_TIME: u16 = 1;
+struct Volcano {
+    flow_rates: HashMap<char, usize>,
+    graph: HashMap<char, Vec<char>>,
+}
 
-/*
- * 1. Find shortest paths between all valves
- * 2. At every time step, find the benefit of all actions. Actions include:
- *      - opening current valve
- *      - travelling to another valve
- *    Pick the action that maximizes benefit
- */
-
-type FlowRates = HashMap<u16, u16>;
-
-type Graph = HashMap<u16, Vec<u16>>;
-
-impl pathfind::Graph<u16> for Graph {
-    fn neighbours(&self, current: u16) -> &Vec<u16> {
-        self.get(&current).unwrap()
+impl Volcano {
+    fn neighbours(&self, valve: char) -> &Vec<char> {
+        self.graph.get(&valve).unwrap()
     }
 
-    fn nodes(&self) -> Vec<u16> {
-        self.keys().cloned().collect()
+    fn flow_rate(&self, valve: char) -> usize {
+        *self.flow_rates.get(&valve).unwrap()
     }
 
-    fn cost(&self, _current: &u16, _next: &u16) -> usize {
-        // all paths cost the same
-        1
+    fn next_actions(&self, actions: &Actions) -> Actions {
+        let mut next_actions = vec![];
+
+        let n_actions = actions.len();
+        let last_action = actions.get(n_actions - 1).unwrap();
+        let second_last_action = match n_actions {
+            0 | 1 => None,
+            _ => actions.get(n_actions - 2),
+        };
+
+        if let Action::Move(valve) = last_action {
+            if self.flow_rate(*valve) > 0 && !actions.contains(&Action::Open(*valve)) {
+                next_actions.push(Action::Open(*valve))
+            }
+            next_actions.extend(
+                self.neighbours(*valve)
+                    .iter()
+                    // don't go backwards if you are still moving
+                    .filter(|valve| match second_last_action {
+                        Some(second_last_action) => {
+                            Action::Move(**valve) != *second_last_action
+                                && Action::Open(**valve) != *second_last_action
+                        }
+                        None => true,
+                    })
+                    .map(|neighbour| Action::Move(*neighbour)),
+            )
+        }
+
+        if let Action::Open(valve) = last_action {
+            next_actions.extend(
+                self.neighbours(*valve)
+                    .iter()
+                    .map(|neighbour| Action::Move(*neighbour)),
+            )
+        }
+
+        next_actions
     }
+}
+
+#[derive(Debug, PartialEq, Clone, Copy)]
+enum Action {
+    Move(char),
+    Open(char),
+}
+
+type Actions = Vec<Action>;
+
+fn pressure_release(actions: Actions, volcano: &Volcano) -> usize {
+    actions
+        .iter()
+        .enumerate()
+        .map(|(i, action)| match action {
+            Action::Open(valve) => volcano.flow_rate(*valve) * (30 - i),
+            Action::Move(_) => 0,
+        })
+        .sum()
 }
 
 pub fn maximize_pressure_release(file: &str) -> usize {
-    let (graph, flow_rates) = parse_input(file);
-    // println!("{graph:#?}");
-    // println!("{flow_rates:#?}");
+    let volcano = parse_input(file);
+    println!("{:#?}", volcano.flow_rates);
+    println!("{:#?}", volcano.graph);
 
-    let mut current_valve = A;
-    let mut minutes = 0;
-    let mut pressure_release = 0;
+    let mut queue = VecDeque::from(vec![vec![Action::Move('A')]]);
+    let mut pressure_releases = vec![];
 
-    let mut open_valves = HashSet::new();
-
-    loop {
-        if minutes >= MAX_MINUTES {
+    while let Some(sequence) = dbg!(queue.pop_front()) {
+        if sequence.len() > 30 {
+            // TODO also exit early if all non-zero valves are open
+            let pressure_release = pressure_release(sequence, &volcano);
+            pressure_releases.push(pressure_release);
             break;
         }
-
-        let paths = recreate_all_paths(&graph, current_valve, PathAlgo::Djikstra);
-        // println!("{paths:#?}");
-
-        if let Some((next_valve, benefit, time_elapsed)) = paths
-            .into_iter()
-            .filter(|(target, _path)| !open_valves.contains(target))
-            .filter(|(target, _path)| flow_rates.get(target).unwrap() != &0)
-            .map(|(target, path)| {
-                let distance = path.len() as u16 + OPEN_TIME;
-                let time_left = MAX_MINUTES - minutes - distance;
-                let flow_rate = flow_rates.get(&target).unwrap();
-                let benefit = time_left * flow_rate;
-
-                (target, benefit, distance)
-            })
-            .max_by_key(|(_target, benefit, _distance)| *benefit)
-        {
-            println!(
-                "from {} to {} benefit: {benefit} travel time: {time_elapsed}, time: {minutes}",
-                char::from(current_valve as u8),
-                char::from(next_valve as u8)
-            );
-
-            open_valves.insert(next_valve);
-            current_valve = next_valve;
-            minutes += time_elapsed;
-            pressure_release += benefit;
-        } else {
-            break;
+        for next_action in dbg!(volcano.next_actions(&sequence)) {
+            let mut new_sequence = sequence.to_vec();
+            new_sequence.push(next_action);
+            queue.push_back(dbg!(new_sequence))
         }
     }
 
-    pressure_release.into()
+    // let possible_routes = vec![];
+
+    *pressure_releases.iter().max().unwrap()
 }
 
-fn parse_input(file: &str) -> (Graph, FlowRates) {
-    let mut graph: Graph = HashMap::new();
-    let mut flow_rates: FlowRates = HashMap::new();
+fn parse_input(file: &str) -> Volcano {
+    let mut graph = HashMap::new();
+    let mut flow_rates = HashMap::new();
 
-    let lines: Vec<(u16, u16, Vec<u16>)> = fs::read_to_string(file)
+    let lines: Vec<(char, usize, Vec<char>)> = fs::read_to_string(file)
         .unwrap()
         .lines()
         .map(|line| {
@@ -104,11 +123,11 @@ fn parse_input(file: &str) -> (Graph, FlowRates) {
             let line: Vec<&str> = line.split_whitespace().collect();
 
             (
-                line[0].as_bytes()[0] as u16,
+                line[0].chars().nth(0).unwrap(),
                 line[1].clone().parse().unwrap(),
                 line[2]
                     .split(",")
-                    .map(|valve| valve.as_bytes()[0] as u16)
+                    .map(|valve| valve.chars().nth(0).unwrap())
                     .collect(),
             )
         })
@@ -119,7 +138,7 @@ fn parse_input(file: &str) -> (Graph, FlowRates) {
         flow_rates.insert(valve.clone(), flow_rate);
     }
 
-    (graph, flow_rates)
+    Volcano { graph, flow_rates }
 }
 
 #[cfg(test)]
