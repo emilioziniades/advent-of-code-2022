@@ -1,83 +1,57 @@
-use std::fs;
+use std::{collections::VecDeque, fs};
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum Number {
-    Shifted(isize),
-    Unshifted(isize),
+struct Number {
+    has_shifted: bool,
+    value: isize,
 }
 
-impl Number {
-    fn to_shifted(self) -> Self {
-        match self {
-            Number::Unshifted(n) => Number::Shifted(n),
-            Number::Shifted(_) => panic!("we have already shifted this item"),
-        }
-    }
-}
-
-impl From<Number> for isize {
-    fn from(value: Number) -> Self {
-        match value {
-            Number::Shifted(n) => n,
-            Number::Unshifted(n) => n,
-        }
-    }
-}
-
-#[derive(Debug)]
-struct Numbers(Vec<Number>);
+struct Numbers(VecDeque<Number>);
 
 impl Numbers {
-    fn move_item(&mut self, from_index: usize, to_index: usize) {
-        let item = self.0[from_index];
-        let item = item.to_shifted();
-        self.0.remove(from_index);
-        self.0.insert(to_index, item);
+    fn from_file(filename: &str) -> Self {
+        let numbers_list = fs::read_to_string(filename)
+            .unwrap()
+            .lines()
+            .map(|line| Number {
+                value: line.parse().unwrap(),
+                has_shifted: false,
+            })
+            .collect();
+
+        Self(numbers_list)
+    }
+    fn shift_item(&mut self, index: usize) {
+        let mut item = self.0.remove(index).unwrap();
+        let delta = index as isize + item.value;
+        let to_index = delta.rem_euclid(self.0.len() as isize);
+        item.has_shifted = true;
+        self.0.insert(to_index as usize, item);
     }
 
     fn next_to_shift(&self) -> Option<usize> {
-        self.0
-            .iter()
-            .position(|n| matches!(n, Number::Unshifted(_)))
-    }
-}
-
-pub fn sum_coordinates(infile: &str) -> isize {
-    let numbers: Vec<Number> = fs::read_to_string(infile)
-        .unwrap()
-        .lines()
-        .map(|line| Number::Unshifted(line.parse().unwrap()))
-        .collect();
-
-    let mut numbers = Numbers(numbers);
-    let n_numbers = numbers.0.len();
-
-    while let Some(index) = numbers.next_to_shift() {
-        println!("{numbers:?}");
-        let number: isize = numbers.0[index].into();
-        let uindex: isize = index.try_into().unwrap();
-        let n_numbers: isize = n_numbers.try_into().unwrap();
-
-        let new_index = (uindex + number).rem_euclid(n_numbers).try_into().unwrap();
-        println!("moving {number} from {index} to {new_index}");
-        numbers.move_item(index, new_index);
+        self.0.iter().position(|n| !n.has_shifted)
     }
 
-    let zero_position = numbers
-        .0
-        .iter()
-        .position(|n| n == &Number::Shifted(0))
-        .unwrap();
+    fn mix(&mut self) {
+        while let Some(index) = self.next_to_shift() {
+            self.shift_item(index);
+        }
+    }
 
-    let coordinates = {
+    fn coordinates(&self) -> [isize; 3] {
+        let zero_position = self.0.iter().position(|n| n.value == 0).unwrap();
+        let n_numbers = self.0.len();
         let x = (zero_position + 1000) % n_numbers;
         let y = (zero_position + 2000) % n_numbers;
         let z = (zero_position + 3000) % n_numbers;
+        [self.0[x].value, self.0[y].value, self.0[z].value]
+    }
+}
 
-        [numbers.0[x], numbers.0[y], numbers.0[z]]
-    };
-
-    return coordinates.into_iter().map(isize::from).sum();
+pub fn mix_once(filename: &str) -> isize {
+    let mut numbers = Numbers::from_file(filename);
+    numbers.mix();
+    numbers.coordinates().iter().sum()
 }
 
 #[cfg(test)]
@@ -85,14 +59,13 @@ mod tests {
     use crate::{day20, fetch_input};
 
     #[test]
-    fn surface_area() {
+    fn mix_once() {
         fetch_input(20);
-        let tests = vec![
-            ("example/day20.txt", 3), /* ("input/day18.txt", 3412) */
-        ];
+
+        let tests = vec![("example/day20.txt", 3), ("input/day20.txt", 872)];
 
         for (infile, want) in tests {
-            let got = day20::sum_coordinates(infile);
+            let got = day20::mix_once(infile);
             assert_eq!(got, want, "got {got}, wanted {want}");
         }
     }

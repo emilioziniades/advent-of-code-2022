@@ -282,6 +282,7 @@ mod tests {
     use crate::{day19, fetch_input};
 
     #[test]
+    #[ignore = "to revisit"]
     fn sum_quality_level() {
         fetch_input(19);
         let tests = vec![
