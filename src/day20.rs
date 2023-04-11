@@ -1,8 +1,16 @@
 use std::{collections::VecDeque, fs};
 
+const DECRYPTION_KEY: isize = 811589153;
+
 struct Number {
-    has_shifted: bool,
     value: isize,
+    id: usize,
+}
+
+impl Number {
+    fn new(value: isize, id: usize) -> Self {
+        Self { value, id }
+    }
 }
 
 struct Numbers(VecDeque<Number>);
@@ -12,28 +20,33 @@ impl Numbers {
         let numbers_list = fs::read_to_string(filename)
             .unwrap()
             .lines()
-            .map(|line| Number {
-                value: line.parse().unwrap(),
-                has_shifted: false,
-            })
+            .enumerate()
+            .map(|(id, line)| Number::new(line.parse().unwrap(), id))
             .collect();
 
         Self(numbers_list)
     }
+
+    // this preserves the relative ordering of items in the list
+    // but does not preserve the absolute indexes of the items.
+    // It doesn't matter since the solution is based on values relative to
+    // zero.
     fn shift_item(&mut self, index: usize) {
-        let mut item = self.0.remove(index).unwrap();
+        let item = self.0.remove(index).unwrap();
         let delta = index as isize + item.value;
-        let to_index = delta.rem_euclid(self.0.len() as isize);
-        item.has_shifted = true;
-        self.0.insert(to_index as usize, item);
+        let new_index = delta.rem_euclid(self.0.len() as isize);
+        self.0.insert(new_index as usize, item);
     }
 
-    fn next_to_shift(&self) -> Option<usize> {
-        self.0.iter().position(|n| !n.has_shifted)
+    // this is the bottleneck - it takes O(n) to find
+    // the next index to shift.
+    fn next_index_to_shift(&self, id: usize) -> usize {
+        self.0.iter().position(|n| n.id == id).unwrap()
     }
 
     fn mix(&mut self) {
-        while let Some(index) = self.next_to_shift() {
+        for i in 0..self.0.len() {
+            let index = self.next_index_to_shift(i);
             self.shift_item(index);
         }
     }
@@ -46,11 +59,30 @@ impl Numbers {
         let z = (zero_position + 3000) % n_numbers;
         [self.0[x].value, self.0[y].value, self.0[z].value]
     }
+
+    fn apply_decryption_key(&mut self, decryption_key: isize) {
+        self.0 = self
+            .0
+            .iter()
+            .map(|number| Number::new(number.value * decryption_key, number.id))
+            .collect();
+    }
 }
 
 pub fn mix_once(filename: &str) -> isize {
     let mut numbers = Numbers::from_file(filename);
     numbers.mix();
+    numbers.coordinates().iter().sum()
+}
+
+pub fn mix_ten_times(filename: &str) -> isize {
+    let mut numbers = Numbers::from_file(filename);
+    numbers.apply_decryption_key(DECRYPTION_KEY);
+
+    for _ in 0..10 {
+        numbers.mix();
+    }
+
     numbers.coordinates().iter().sum()
 }
 
@@ -66,6 +98,21 @@ mod tests {
 
         for (infile, want) in tests {
             let got = day20::mix_once(infile);
+            assert_eq!(got, want, "got {got}, wanted {want}");
+        }
+    }
+
+    #[test]
+    fn mix_ten_times() {
+        fetch_input(20);
+
+        let tests = vec![
+            ("example/day20.txt", 1623178306),
+            ("input/day20.txt", 5382459262696),
+        ];
+
+        for (infile, want) in tests {
+            let got = day20::mix_ten_times(infile);
             assert_eq!(got, want, "got {got}, wanted {want}");
         }
     }
