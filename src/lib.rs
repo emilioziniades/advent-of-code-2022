@@ -27,9 +27,8 @@ use ureq::get;
 
 pub fn fetch_input(day: i32) {
     let filename = format!("input/day{day:0>#2}.txt");
-    let file_exists = Path::new(&filename).exists();
 
-    if file_exists {
+    if Path::new(&filename).exists() {
         return;
     }
 
