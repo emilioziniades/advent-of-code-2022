@@ -6,7 +6,10 @@
  *    I turned on all valves? If that still yields a lower benefit than the existing maximum,
  *    then don't pursue it.
  */
-use std::{collections::HashMap, fs};
+use std::{
+    collections::{HashMap, HashSet},
+    fs,
+};
 
 use crate::queue::PriorityQueue;
 
@@ -126,14 +129,13 @@ impl Volcano {
 
     fn benefit_from_opening_valve<'a>(
         &self,
-        path: &[&Valve],
+        visited: &HashSet<&Valve>,
+        current_valve: &'a Valve,
         target_valve: &'a Valve,
         current_minute: usize,
         pairwise_distances: &Distances,
     ) -> Option<ValveOpenBenefit<'a>> {
-        let current_valve = path.last().unwrap();
-
-        if path.contains(&target_valve) {
+        if visited.contains(&target_valve) {
             return None;
         }
 
@@ -157,9 +159,10 @@ impl Volcano {
         Some(valve_open_benefit)
     }
 
-    fn benefit_from_opening_all_valves(
-        &self,
-        path: &[&Valve],
+    fn benefit_from_opening_all_valves<'a>(
+        &'a self,
+        visited: &HashSet<&Valve>,
+        current_valve: &'a Valve,
         current_minute: usize,
         pairwise_distances: &Distances,
     ) -> Vec<ValveOpenBenefit> {
@@ -167,7 +170,8 @@ impl Volcano {
             .into_iter()
             .filter_map(|target_valve| {
                 self.benefit_from_opening_valve(
-                    path,
+                    visited,
+                    current_valve,
                     target_valve,
                     current_minute,
                     pairwise_distances,
@@ -207,13 +211,18 @@ impl Volcano {
 }
 
 fn find_all_routes(volcano: &Volcano, pairwise_distances: &Distances) -> Vec<usize> {
-    let start = vec![&START];
+    let visited = HashSet::from([&START]);
+    let current_valve = &START;
     let start_minute = 1;
     let start_benefit = 0;
-    let initial_possible_next_moves =
-        volcano.benefit_from_opening_all_valves(&start, start_minute, pairwise_distances);
+    let initial_possible_next_moves = volcano.benefit_from_opening_all_valves(
+        &visited,
+        current_valve,
+        start_minute,
+        pairwise_distances,
+    );
     find_all_routes_recursive(
-        start,
+        &visited,
         start_benefit,
         volcano,
         pairwise_distances,
@@ -222,7 +231,7 @@ fn find_all_routes(volcano: &Volcano, pairwise_distances: &Distances) -> Vec<usi
 }
 
 fn find_all_routes_recursive(
-    path: Vec<&Valve>,
+    visited: &HashSet<&Valve>,
     benefit: usize,
     volcano: &Volcano,
     pairwise_distances: &Distances,
@@ -231,11 +240,12 @@ fn find_all_routes_recursive(
     next_possible_benefits
         .iter()
         .flat_map(|valve_open_benefit| {
-            let mut path = path.clone();
-            path.push(valve_open_benefit.target_valve);
+            let mut visited = visited.clone();
+            visited.insert(valve_open_benefit.target_valve);
 
             let next_possible_valve_openings = volcano.benefit_from_opening_all_valves(
-                &path,
+                &visited,
+                valve_open_benefit.target_valve,
                 valve_open_benefit.current_minute,
                 pairwise_distances,
             );
@@ -244,7 +254,7 @@ fn find_all_routes_recursive(
                 vec![benefit + valve_open_benefit.benefit]
             } else {
                 find_all_routes_recursive(
-                    path,
+                    &visited,
                     benefit + valve_open_benefit.benefit,
                     volcano,
                     pairwise_distances,
