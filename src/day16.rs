@@ -7,6 +7,7 @@
  *    then don't pursue it.
  */
 use std::{
+    cmp::min,
     collections::{HashMap, HashSet, VecDeque},
     fs,
 };
@@ -313,7 +314,7 @@ pub fn maximize_pressure_release_with_elephant(filename: &str) -> usize {
 
     while let Some(team_route) = possible_routes.pop_back() {
         // what happens if we open all the valves right now
-        /* let maximum_possible_benefit: usize = volcano
+        let maximum_possible_benefit: usize = volcano
             .flow_rates
             .iter()
             .map(|(valve, _)| {
@@ -333,10 +334,10 @@ pub fn maximize_pressure_release_with_elephant(filename: &str) -> usize {
             })
             .sum();
 
-        if maximum_possible_benefit < max_benefit {
+        if maximum_possible_benefit + team_route.benefit < max_benefit {
             println!("purged a possibility!");
             continue;
-        } */
+        }
 
         println!("{team_route:?}");
         let possible_human_benefits = volcano.benefit_from_opening_all_valves(
@@ -390,7 +391,7 @@ mod tests {
     use crate::{day16, fetch_input};
 
     #[test]
-    // #[ignore]
+    #[ignore]
     fn maximize_pressure_release() {
         fetch_input(16);
 
@@ -410,8 +411,8 @@ mod tests {
     fn maximize_pressure_release_with_elephant() {
         fetch_input(16);
 
-        let tests = vec![("example/day16.txt", 1707)];
-        // let tests = vec![("input/day16.txt", 0)];
+        // let tests = vec![("example/day16.txt", 1707)];
+        let tests = vec![("input/day16.txt", 0)];
         // let tests = vec![("example/day16.txt", 1707), ("input/day16.txt", 0)];
 
         for test in tests {
