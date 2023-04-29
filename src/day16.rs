@@ -7,24 +7,23 @@ use crate::queue::PriorityQueue;
 
 const MAX_MINUTES: usize = 30;
 const MAX_MINUTES_WITH_ELEPHANT: usize = 26;
-const START: Valve = ['A', 'A'];
+const START_VALVE: usize = 0;
 
-type Distances = HashMap<Valve, HashMap<Valve, usize>>;
-
-type Valve = [char; 2];
+type Distances = HashMap<usize, HashMap<usize, usize>>;
 
 #[derive(Debug)]
 struct ValveOpenBenefit {
-    target_valve: Valve,
+    target_valve: usize,
     current_minute: usize,
     benefit: usize,
 }
 
 #[derive(Debug)]
 struct Volcano {
-    flow_rates: HashMap<Valve, usize>,
-    graph: HashMap<Valve, HashMap<Valve, usize>>,
+    flow_rates: HashMap<usize, usize>,
+    graph: HashMap<usize, HashMap<usize, usize>>,
     pairwise_distances: Distances,
+    start_id: usize,
 }
 
 impl Volcano {
@@ -32,10 +31,30 @@ impl Volcano {
         let mut graph = HashMap::new();
         let mut flow_rates = HashMap::new();
 
-        let lines: Vec<(Valve, usize, HashMap<Valve, usize>)> = fs::read_to_string(filename)
+        let input = fs::read_to_string(filename).unwrap();
+
+        let valve_name_to_id: HashMap<String, usize> = input
+            .lines()
+            .enumerate()
+            .map(|(id, line)| {
+                let line = line.replace("Valve ", "");
+                let valve_name = line
+                    .split_whitespace()
+                    .into_iter()
+                    .next()
+                    .unwrap()
+                    .to_string();
+                (valve_name, id)
+            })
+            .collect();
+
+        println!("{valve_name_to_id:#?}");
+
+        let lines: Vec<(usize, usize, HashMap<usize, usize>)> = fs::read_to_string(filename)
             .unwrap()
             .lines()
-            .map(|line| {
+            .enumerate()
+            .map(|(id, line)| {
                 let line = line
                     .replace("Valve ", "")
                     .replace("has flow rate=", "")
@@ -45,19 +64,16 @@ impl Volcano {
 
                 let mut line = line.split_whitespace();
 
+                line.next().unwrap();
+
                 (
-                    line.next()
-                        .unwrap()
-                        .chars()
-                        .collect::<Vec<char>>()
-                        .try_into()
-                        .unwrap(),
+                    id,
                     line.next().unwrap().parse().unwrap(),
                     line.next()
                         .unwrap()
                         .split(',')
-                        .map(|valve| valve.chars().collect::<Vec<char>>().try_into().unwrap())
-                        .map(|valve| (valve, 1)) // to be pruned later
+                        .map(|valve| valve_name_to_id.get(valve).unwrap())
+                        .map(|valve| (*valve, 1)) // to be pruned later
                         .collect(),
                 )
             })
@@ -72,15 +88,16 @@ impl Volcano {
             graph,
             flow_rates,
             pairwise_distances: HashMap::new(),
+            start_id: *valve_name_to_id.get("AA").unwrap(),
         }
     }
 
     fn pruned(mut self) -> Self {
-        let valves_to_prune: Vec<&Valve> = self
+        let valves_to_prune: Vec<&usize> = self
             .flow_rates
             .iter()
             .filter_map(|(valve, flow_rate)| {
-                if valve == &START || flow_rate > &0 {
+                if valve == &self.start_id || flow_rate > &0 {
                     None
                 } else {
                     Some(valve)
@@ -91,7 +108,7 @@ impl Volcano {
         for valve in valves_to_prune {
             let neighbours = self.graph.remove(valve).unwrap();
             for (neighbour, distance_to_prunee) in neighbours.iter() {
-                let others: Vec<&Valve> = neighbours.keys().filter(|x| x != &neighbour).collect();
+                let others: Vec<&usize> = neighbours.keys().filter(|x| x != &neighbour).collect();
                 for other in others {
                     let other_distance_to_prunee =
                         self.graph.get_mut(other).unwrap().remove(valve).unwrap();
@@ -134,9 +151,9 @@ impl Volcano {
 
     fn benefit_from_opening_valve(
         &self,
-        visited: &HashSet<Valve>,
-        current_valve: Valve,
-        target_valve: Valve,
+        visited: &HashSet<usize>,
+        current_valve: usize,
+        target_valve: usize,
         current_minute: usize,
         max_minutes: usize,
     ) -> Option<ValveOpenBenefit> {
@@ -169,8 +186,8 @@ impl Volcano {
 
     fn benefit_from_opening_all_valves(
         &self,
-        visited: &HashSet<Valve>,
-        current_valve: Valve,
+        visited: &HashSet<usize>,
+        current_valve: usize,
         current_minute: usize,
         max_minutes: usize,
     ) -> Vec<ValveOpenBenefit> {
@@ -189,9 +206,28 @@ impl Volcano {
     }
 }
 
+fn f(
+    valve: usize,
+    opened_valves: usize,
+    time: usize,
+    other_players: usize,
+    volcano: &Volcano,
+) -> usize {
+    let mut answer = 0;
+    let not_open = opened_valves & (1 << valve) == 0;
+    if not_open {
+        let opened_valves = opened_valves | (1 << valve);
+        answer = answer.max(
+            (time - 1) * volcano.flow_rates.get(&valve).unwrap()
+                + f(valve, opened_valves, time - 1, other_players, volcano),
+        );
+    }
+    return answer;
+}
+
 fn find_best_route(volcano: &Volcano) -> usize {
-    let visited = HashSet::from([START]);
-    let current_valve = START;
+    let visited = HashSet::from([volcano.start_id]);
+    let current_valve = volcano.start_id;
     let start_minute = 1;
     let start_benefit = 0;
     let mut best = 0;
@@ -210,7 +246,7 @@ fn find_best_route(volcano: &Volcano) -> usize {
 }
 
 fn find_all_routes_recursive(
-    visited: &HashSet<Valve>,
+    visited: &HashSet<usize>,
     benefit: usize,
     volcano: &Volcano,
     next_possible_benefits: Vec<ValveOpenBenefit>,
@@ -247,9 +283,9 @@ fn find_all_routes_recursive(
 }
 
 fn find_best_route_with_elephant(volcano: &Volcano) -> usize {
-    let visited = HashSet::from([START]);
-    let current_valve_human = START;
-    let current_valve_elephant = START;
+    let visited = HashSet::from([START_VALVE]);
+    let current_valve_human = START_VALVE;
+    let current_valve_elephant = START_VALVE;
     let start_minute_human = 1;
     let start_minute_elephant = 1;
     let start_benefit = 0;
@@ -283,7 +319,7 @@ fn find_best_route_with_elephant(volcano: &Volcano) -> usize {
 }
 
 fn find_all_routes_recursive_with_elephant(
-    visited: &HashSet<[char; 2]>,
+    visited: &HashSet<usize>,
     benefit: usize,
     volcano: &Volcano,
     next_possible_human_benefits: Vec<ValveOpenBenefit>,
@@ -337,10 +373,23 @@ fn find_all_routes_recursive_with_elephant(
     }
 }
 
+/* #[derive(Clone, Copy)]
+struct State {
+    valve: usize,
+    opened_valves: usize,
+    time_left: usize,
+    other_players: usize,
+} */
+
 pub fn maximize_pressure_release(filename: &str) -> usize {
     let volcano = Volcano::from_file(filename)
         .pruned()
         .with_pairwise_distances();
+
+    println!("{:#?}", volcano);
+    // return 0;
+    // let dp: HashMap<State, usize> = HashMap::new();
+    // f(0, 0, MAX_MINUTES, 0, &volcano)
     find_best_route(&volcano)
 }
 
