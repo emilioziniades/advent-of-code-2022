@@ -1,6 +1,6 @@
 use std::{fmt, fs};
 
-const ROCK_ORDER: &[RockShape] = &[
+const ROCK_ORDER: [RockShape; 5] = [
     RockShape::Minus,
     RockShape::Plus,
     RockShape::L,
@@ -16,8 +16,8 @@ struct Point {
 
 #[derive(Debug, Clone, Copy)]
 enum RockShape {
-    Plus,
     Minus,
+    Plus,
     L,
     Bar,
     Square,
@@ -310,7 +310,7 @@ mod tests {
     use crate::{day17, fetch_input};
 
     #[test]
-    #[ignore = "to revisit"]
+    // #[ignore = "to revisit"]
     fn count_tower_height() {
         fetch_input(17);
 

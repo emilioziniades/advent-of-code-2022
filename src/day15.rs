@@ -115,7 +115,7 @@ fn parse_sensors(file: &str) -> Vec<Sensor> {
         .collect()
 }
 
-fn get_non_beacon_ranges(sensors: &Vec<Sensor>, row: isize) -> Vec<Interval> {
+fn get_non_beacon_ranges(sensors: &[Sensor], row: isize) -> Vec<Interval> {
     let mut ranges: Vec<Interval> = Vec::new();
 
     for sensor in sensors {

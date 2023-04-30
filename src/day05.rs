@@ -56,7 +56,7 @@ pub fn find_top_crates(file: &str, one_by_one: bool) -> String {
         dst.append(&mut items);
     }
 
-    let mut crates: Vec<(&usize, &Vec<u8>)> = crates.iter().collect();
+    let mut crates: Vec<(usize, Vec<u8>)> = crates.into_iter().collect();
     crates.sort();
 
     let result: Vec<u8> = crates
