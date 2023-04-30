@@ -70,9 +70,9 @@ fn fall(
                 if rocks.contains(&below_right) || sands.contains(&below_right) {
                     // can't go anywhere
                     return Some(sand);
-                } else {
-                    sand = below_right;
                 }
+
+                sand = below_right;
             } else {
                 sand = below_left;
             }

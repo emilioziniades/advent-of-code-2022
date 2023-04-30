@@ -1,3 +1,10 @@
+#![warn(clippy::pedantic)]
+#![allow(
+    clippy::must_use_candidate,
+    clippy::missing_panics_doc,
+    clippy::implicit_hasher
+)]
+
 pub mod day01;
 pub mod day02;
 pub mod day03;

@@ -48,7 +48,7 @@ impl Rope {
     }
 
     fn update_knot_pair(&mut self, ahead_ix: usize, behind_ix: usize) {
-        if self.knots[behind_ix].is_touching(&self.knots[ahead_ix]) {
+        if self.knots[behind_ix].is_touching(self.knots[ahead_ix]) {
             return;
         }
 
@@ -62,39 +62,39 @@ impl Rope {
             // horizontally aligned
             (true, false) => {
                 if y_h > y_t {
-                    self.knots[behind_ix].y += 1
+                    self.knots[behind_ix].y += 1;
                 } else {
-                    self.knots[behind_ix].y -= 1
+                    self.knots[behind_ix].y -= 1;
                 }
             }
 
             // vertically aligned
             (false, true) => {
                 if x_h > x_t {
-                    self.knots[behind_ix].x += 1
+                    self.knots[behind_ix].x += 1;
                 } else {
-                    self.knots[behind_ix].x -= 1
+                    self.knots[behind_ix].x -= 1;
                 }
             }
 
             // diagonal movement needed
             (false, false) => {
                 if x_h > x_t {
-                    self.knots[behind_ix].x += 1
+                    self.knots[behind_ix].x += 1;
                 } else {
-                    self.knots[behind_ix].x -= 1
+                    self.knots[behind_ix].x -= 1;
                 }
 
                 if y_h > y_t {
-                    self.knots[behind_ix].y += 1
+                    self.knots[behind_ix].y += 1;
                 } else {
-                    self.knots[behind_ix].y -= 1
+                    self.knots[behind_ix].y -= 1;
                 }
             }
         };
     }
 
-    fn update(&mut self, movement: Movement, tail_positions: &mut HashSet<Point>) {
+    fn update(&mut self, movement: &Movement, tail_positions: &mut HashSet<Point>) {
         for _ in 0..movement.steps {
             // update head
             match movement.direction {
@@ -126,11 +126,11 @@ impl Point {
         Point { x, y }
     }
 
-    fn is_touching(&self, other: &Point) -> bool {
+    fn is_touching(self, other: Point) -> bool {
         let Point { x: x_h, y: y_h } = self;
         let Point { x: x_t, y: y_t } = other;
 
-        *x_t <= x_h + 1 && *x_t >= x_h - 1 && *y_t <= y_h + 1 && *y_t >= y_h - 1
+        x_t <= x_h + 1 && x_t >= x_h - 1 && y_t <= y_h + 1 && y_t >= y_h - 1
     }
 }
 
@@ -143,7 +143,7 @@ pub fn count_tail_positions(filename: &str, n_ropes: u32) -> usize {
     tail_positions.insert(*rope.knots.last().unwrap());
 
     for movement in movements {
-        rope.update(movement, &mut tail_positions);
+        rope.update(&movement, &mut tail_positions);
     }
 
     tail_positions.len()

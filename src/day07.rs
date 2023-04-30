@@ -127,12 +127,11 @@ fn collect_directory_data(file: &str) -> Vec<DirectoryData> {
                 let parent_id = cwd.parent_id.unwrap();
                 let mut parent = None;
                 root.find(parent_id, &mut parent);
-                let parent = match parent {
-                    Some(parent) => parent,
-                    None => {
+
+                let Some(parent) = parent else {
                         panic!("directory should have parent");
-                    }
                 };
+
                 cwd = parent;
             }
             ["$", "cd", location] => {
@@ -141,7 +140,7 @@ fn collect_directory_data(file: &str) -> Vec<DirectoryData> {
             ["$", "ls"] => (),
             ["dir", dir_name] => {
                 let dir = FileSystemItem::Directory(Directory::new(dir_name, Some(cwd.id)));
-                cwd.add_child(dir)
+                cwd.add_child(dir);
             }
             [size, file_name] => {
                 let size: u32 = size.parse().unwrap();
@@ -166,9 +165,12 @@ pub fn sum_small_dirs(filename: &str) -> u64 {
     let dirs = collect_directory_data(filename);
 
     dirs.iter()
-        .filter_map(|dir| match dir.size < SMALL_DIR_SIZE {
-            true => Some(dir.size),
-            false => None,
+        .filter_map(|dir| {
+            if dir.size < SMALL_DIR_SIZE {
+                Some(dir.size)
+            } else {
+                None
+            }
         })
         .sum()
 }
@@ -183,9 +185,12 @@ pub fn delete_directory(filename: &str) -> u64 {
     let free_space = DISK_SIZE - root_dir.size;
 
     dirs.iter()
-        .filter_map(|dir| match free_space + dir.size > FREE_SPACE_REQUIRED {
-            true => Some(dir.size),
-            false => None,
+        .filter_map(|dir| {
+            if free_space + dir.size > FREE_SPACE_REQUIRED {
+                Some(dir.size)
+            } else {
+                None
+            }
         })
         .min()
         .unwrap()

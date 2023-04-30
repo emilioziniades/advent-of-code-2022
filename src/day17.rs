@@ -8,7 +8,7 @@ const ROCK_ORDER: &[RockShape] = &[
     RockShape::Square,
 ];
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 struct Point {
     x: usize,
     y: usize,
@@ -23,7 +23,7 @@ enum RockShape {
     Square,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 struct Rock {
     bottom_left: Point,
     shape: RockShape,
@@ -42,10 +42,10 @@ impl Rock {
                 y: highest_rock + 3,
             },
         };
-        Self { shape, bottom_left }
+        Self { bottom_left, shape }
     }
 
-    fn push(&mut self, chamber: &Chamber, direction: &Direction) {
+    fn push(&mut self, chamber: &Chamber, direction: Direction) {
         if !self.touches(chamber, direction) {
             match direction {
                 Direction::Left => self.bottom_left.x -= 1,
@@ -58,11 +58,11 @@ impl Rock {
         self.bottom_left.y -= 1;
     }
 
-    fn touches(&self, chamber: &Chamber, direction: &Direction) -> bool {
+    fn touches(&self, chamber: &Chamber, direction: Direction) -> bool {
         self.touches_wall(direction) || self.touches_rocks(chamber, direction)
     }
 
-    fn touches_wall(&self, side: &Direction) -> bool {
+    fn touches_wall(&self, side: Direction) -> bool {
         match side {
             Direction::Left => match self.shape {
                 RockShape::Plus => self.bottom_left.x == 1,
@@ -79,7 +79,7 @@ impl Rock {
         }
     }
 
-    fn touches_rocks(&self, chamber: &Chamber, direction: &Direction) -> bool {
+    fn touches_rocks(&self, chamber: &Chamber, direction: Direction) -> bool {
         let (x, y) = (self.bottom_left.x, self.bottom_left.y);
         match direction {
             Direction::Left => {
@@ -120,7 +120,10 @@ impl Rock {
             return true;
         }
 
-        let (x, y) = (self.bottom_left.x as isize, self.bottom_left.y as isize);
+        let (x, y) = (
+            isize::try_from(self.bottom_left.x).unwrap(),
+            isize::try_from(self.bottom_left.y).unwrap(),
+        );
         let bottom_edges = match self.shape {
             RockShape::Bar => vec![(x, y - 1)],
             RockShape::Plus => vec![(x, y - 1), (x - 1, y), (x + 1, y)],
@@ -131,7 +134,7 @@ impl Rock {
 
         let bottom_edges = bottom_edges
             .into_iter()
-            .map(|(x, y)| (x as usize, y as usize))
+            .map(|(x, y)| (usize::try_from(x).unwrap(), usize::try_from(y).unwrap()))
             .collect();
 
         chamber.any(bottom_edges)
@@ -141,7 +144,7 @@ impl Rock {
 struct Chamber(Vec<Vec<bool>>);
 
 impl Chamber {
-    fn add_empty_rows(&mut self, rock: &RockShape) {
+    fn add_empty_rows(&mut self, rock: RockShape) {
         let n_rows = match rock {
             RockShape::Plus | RockShape::L => 3 + 3,
             RockShape::Minus => 3 + 1,
@@ -248,7 +251,7 @@ impl fmt::Display for Chamber {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 enum Direction {
     Left,
     Right,
@@ -264,7 +267,7 @@ impl Direction {
     }
 }
 
-fn fill_chamber(jet_flows: Vec<Direction>, n_rocks: usize) -> Option<Chamber> {
+fn fill_chamber(jet_flows: &[Direction], n_rocks: usize) -> Option<Chamber> {
     let mut chamber = Chamber::new();
     let mut jet_flows = jet_flows.iter().cycle();
     let mut rocks = ROCK_ORDER.iter().cycle();
@@ -272,17 +275,17 @@ fn fill_chamber(jet_flows: Vec<Direction>, n_rocks: usize) -> Option<Chamber> {
     for _ in 0..n_rocks {
         let rock = rocks.next()?;
         let mut rock = Rock::from(*rock, &chamber);
-        chamber.add_empty_rows(&rock.shape);
+        chamber.add_empty_rows(rock.shape);
         loop {
             let jet_flow = jet_flows.next()?;
-            rock.push(&chamber, jet_flow);
+            rock.push(&chamber, *jet_flow);
 
             if rock.touches_bottom(&chamber) {
                 chamber.update(rock);
                 break;
-            } else {
-                rock.fall();
             }
+
+            rock.fall();
         }
     }
 
@@ -291,9 +294,9 @@ fn fill_chamber(jet_flows: Vec<Direction>, n_rocks: usize) -> Option<Chamber> {
 
 pub fn count_tower_height(file: &str, n_rocks: usize) -> Option<usize> {
     let jet_flows = fs::read_to_string(file).expect("file exists");
-    let jet_flows = jet_flows.trim().chars().map(Direction::from).collect();
+    let jet_flows: Vec<Direction> = jet_flows.trim().chars().map(Direction::from).collect();
 
-    let chamber = fill_chamber(jet_flows, n_rocks)?;
+    let chamber = fill_chamber(&jet_flows, n_rocks)?;
     // println!("{chamber}");
 
     // let num_chamber: NumChamber = chamber.into();

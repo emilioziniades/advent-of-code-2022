@@ -66,12 +66,12 @@ impl Packet {
 
             (Packet::List(_), Packet::Number(_)) => {
                 let other = &Packet::List(vec![other.clone()]);
-                self.partial_cmp_recursive(other, exit, order)
+                self.partial_cmp_recursive(other, exit, order);
             }
 
             (Packet::Number(_), Packet::List(_)) => {
                 let left = &Packet::List(vec![self.clone()]);
-                left.partial_cmp_recursive(other, exit, order)
+                left.partial_cmp_recursive(other, exit, order);
             }
         }
     }
@@ -127,7 +127,7 @@ fn tokenize(line: &str) -> Vec<String> {
                     tokens.push(current_number.clone());
                     current_number.clear();
                 }
-                tokens.push(chr.to_string())
+                tokens.push(chr.to_string());
             }
             ',' => {
                 if !current_number.is_empty() {
@@ -147,7 +147,7 @@ pub fn sum_ordered_pairs(filename: &str) -> usize {
     packet_pairs
         .trim_end()
         .split("\n\n")
-        .zip(1..packet_pairs.len() + 1)
+        .zip(1..=packet_pairs.len())
         .map(|(pair, index)| {
             let (left, right) = {
                 let (left, right) = pair.split_once('\n').unwrap();

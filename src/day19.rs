@@ -50,7 +50,7 @@ impl Factory {
 
 */
 
-#[derive(Debug, Hash, PartialEq, Eq, Clone)]
+#[derive(Debug, Hash, PartialEq, Eq, Clone, Copy)]
 enum Resource {
     Ore,
     Clay,
@@ -58,7 +58,7 @@ enum Resource {
     Geode,
 }
 
-#[derive(Debug, Hash, PartialEq, Eq, Clone)]
+#[derive(Debug, Hash, PartialEq, Eq, Clone, Copy)]
 struct Robot(Resource);
 
 #[derive(Debug)]
@@ -83,7 +83,7 @@ struct Blueprint {
 
 impl Blueprint {
     fn from_line(line: &str) -> Self {
-        use Resource::*;
+        use Resource::{Clay, Geode, Obsidian, Ore};
 
         let line = line
             .to_string()
@@ -126,7 +126,7 @@ impl Blueprint {
 
     fn quality_level(self) -> usize {
         let id = self.id;
-        let max_geodes = max_possible_geodes(self);
+        let max_geodes = max_possible_geodes(&self);
         id * max_geodes
     }
 }
@@ -169,9 +169,9 @@ impl Factory {
         }
     }
 
-    fn update_robots(&mut self, new_robot: &Option<Robot>) {
+    fn update_robots(&mut self, new_robot: Option<Robot>) {
         if let Some(new_robot) = new_robot {
-            let robots_count = self.robots.get_mut(new_robot).unwrap();
+            let robots_count = self.robots.get_mut(&new_robot).unwrap();
             *robots_count += 1;
         }
     }
@@ -209,9 +209,9 @@ impl Factory {
         next_action
     } */
 
-    fn spend_resources(&mut self, new_robot: &Option<Robot>, blueprint: &Blueprint) {
+    fn spend_resources(&mut self, new_robot: Option<Robot>, blueprint: &Blueprint) {
         if let Some(new_robot) = new_robot {
-            let costs = blueprint.costs.get(new_robot).unwrap();
+            let costs = blueprint.costs.get(&new_robot).unwrap();
             for cost in costs {
                 let resource_count = self.resources.get_mut(&cost.resource).unwrap();
                 *resource_count -= cost.amount;
@@ -220,14 +220,14 @@ impl Factory {
     }
 
     fn tick(&mut self, new_robot: Option<Robot>, blueprint: &Blueprint) {
-        self.spend_resources(&new_robot, blueprint);
+        self.spend_resources(new_robot, blueprint);
         self.gather_resources();
-        self.update_robots(&new_robot);
+        self.update_robots(new_robot);
         self.time += 1;
     }
 }
 
-fn max_possible_geodes(blueprint: Blueprint) -> usize {
+fn max_possible_geodes(blueprint: &Blueprint) -> usize {
     println!("{blueprint:?}");
     let mut factories = VecDeque::from([Factory::new()]);
 
@@ -240,14 +240,14 @@ fn max_possible_geodes(blueprint: Blueprint) -> usize {
             continue;
         }
 
-        for next_action in factory.possible_next_actions(&blueprint) {
+        for next_action in factory.possible_next_actions(blueprint) {
             let mut new_factory = factory.clone();
-            new_factory.tick(Some(next_action), &blueprint);
+            new_factory.tick(Some(next_action), blueprint);
             factories.push_front(new_factory);
         }
 
         // we can also do nothing
-        factory.tick(None, &blueprint);
+        factory.tick(None, blueprint);
         factories.push_front(factory);
     }
 

@@ -86,24 +86,24 @@ pub fn external_surface_area(file: &str) -> usize {
     let mut max_z = isize::MIN;
     let mut min_z = isize::MAX;
 
-    for cube in cubes.0.iter() {
+    for cube in &cubes.0 {
         if cube.x > max_x {
             max_x = cube.x;
         }
         if cube.x < min_x {
-            min_x = cube.x
+            min_x = cube.x;
         }
         if cube.y > max_y {
             max_y = cube.y;
         }
         if cube.y < min_y {
-            min_y = cube.y
+            min_y = cube.y;
         }
         if cube.z > max_z {
             max_z = cube.z;
         }
         if cube.z < min_z {
-            min_z = cube.z
+            min_z = cube.z;
         }
     }
 

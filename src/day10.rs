@@ -50,11 +50,11 @@ impl Cpu {
                 self.cycles += 1;
 
                 if (self.cycles - 20) % 40 == 0 {
-                    total_signal_strength += self.cycles * self.x
+                    total_signal_strength += self.cycles * self.x;
                 }
             }
             if let Instruction::AddX(addx) = instruction {
-                self.x += addx
+                self.x += addx;
             }
         }
 
@@ -82,7 +82,7 @@ impl Cpu {
             }
 
             if let Instruction::AddX(addx) = instruction {
-                self.x += addx
+                self.x += addx;
             }
         }
 

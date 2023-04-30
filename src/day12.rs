@@ -1,6 +1,6 @@
 use std::{collections::HashMap, fs, str};
 
-use crate::queue::PriorityQueue;
+use crate::queue;
 
 // ascii encodings of S, E, a and z
 const S: u8 = 83;
@@ -40,7 +40,7 @@ impl Graph {
                     start = Point::new(x, y);
                 }
                 if letter == &E {
-                    end = Point::new(x, y)
+                    end = Point::new(x, y);
                 }
             }
         }
@@ -83,7 +83,7 @@ impl Graph {
         for (y, row) in grid.iter().enumerate() {
             for (x, letter) in row.iter().enumerate() {
                 if letter == &S {
-                    end = Point::new(x, y) // flipped
+                    end = Point::new(x, y); // flipped
                 }
                 if letter == &E {
                     start = Point::new(x, y); // flipped
@@ -118,7 +118,7 @@ impl Graph {
     }
     // A-star with manhattan distance as heuristic
     fn find_shortest_path(&self, search_type: SearchType) -> SolvedPath {
-        let mut frontier: PriorityQueue<Point> = PriorityQueue::new();
+        let mut frontier: queue::Priority<Point> = queue::Priority::new();
         frontier.push(self.start, 0);
 
         let mut came_from: HashMap<Point, Point> = HashMap::new();
@@ -131,9 +131,8 @@ impl Graph {
                 break;
             }
 
-            let neighbours = match self.neighbours.get(&current) {
-                Some(n) => n,
-                None => panic!("no neighbours for {current:?}"),
+            let Some(neighbours) = self.neighbours.get(&current) else {
+                panic!("no neighbours for {current:?}");
             };
 
             for neighbour in neighbours {
@@ -162,24 +161,25 @@ impl Point {
     }
 
     fn neighbours(&self, cols: usize, rows: usize) -> Vec<Self> {
-        let (cols, rows) = (cols as isize, rows as isize);
+        let (cols, rows) = (
+            isize::try_from(cols).unwrap(),
+            isize::try_from(rows).unwrap(),
+        );
 
         let deltas = [(0, 1), (0, -1), (1, 0), (-1, 0)];
 
         deltas
             .iter()
             .filter_map(|(dx, dy)| {
-                let x_n = self.x as isize + dx;
-                let y_n = self.y as isize + dy;
-                match [x_n >= 0, x_n < cols, y_n >= 0, y_n < rows]
-                    .into_iter()
-                    .all(|b| b)
-                {
-                    true => Some(Point {
-                        x: x_n as usize,
-                        y: y_n as usize,
-                    }),
-                    _ => None,
+                let x_n = isize::try_from(self.x).unwrap() + dx;
+                let y_n = isize::try_from(self.y).unwrap() + dy;
+                if x_n >= 0 && x_n < cols && y_n >= 0 && y_n < rows {
+                    Some(Point {
+                        x: usize::try_from(x_n).unwrap(),
+                        y: usize::try_from(y_n).unwrap(),
+                    })
+                } else {
+                    None
                 }
             })
             .collect()
@@ -190,7 +190,7 @@ struct SolvedPath {
     cost_so_far: HashMap<Point, usize>,
 }
 
-#[derive(PartialEq, Eq)]
+#[derive(PartialEq, Eq, Clone, Copy)]
 enum SearchType {
     EarlyExit,
     FullSearch,

@@ -1,6 +1,6 @@
 use std::{collections::VecDeque, fs};
 
-const DECRYPTION_KEY: isize = 811589153;
+const DECRYPTION_KEY: isize = 811_589_153;
 
 struct Number {
     value: isize,
@@ -33,9 +33,9 @@ impl Numbers {
     // zero.
     fn shift_item(&mut self, index: usize) {
         let item = self.0.remove(index).unwrap();
-        let delta = index as isize + item.value;
-        let new_index = delta.rem_euclid(self.0.len() as isize);
-        self.0.insert(new_index as usize, item);
+        let delta = isize::try_from(index).unwrap() + item.value;
+        let new_index = delta.rem_euclid(isize::try_from(self.0.len()).unwrap());
+        self.0.insert(usize::try_from(new_index).unwrap(), item);
     }
 
     // this is the bottleneck - it takes O(n) to find

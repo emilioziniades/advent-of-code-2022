@@ -31,24 +31,24 @@ impl Game {
             G {
                 me: C::Rock,
                 you: C::Scissors,
-            } => O::Win,
-            G {
-                me: C::Rock,
-                you: C::Paper,
-            } => O::Lose,
-            G {
-                me: C::Paper,
-                you: C::Scissors,
-            } => O::Lose,
-            G {
+            }
+            | G {
                 me: C::Paper,
                 you: C::Rock,
-            } => O::Win,
-            G {
+            }
+            | G {
                 me: C::Scissors,
                 you: C::Paper,
             } => O::Win,
             G {
+                me: C::Rock,
+                you: C::Paper,
+            }
+            | G {
+                me: C::Paper,
+                you: C::Scissors,
+            }
+            | G {
                 me: C::Scissors,
                 you: C::Rock,
             } => O::Lose,

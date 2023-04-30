@@ -3,7 +3,7 @@ use std::{
     collections::BinaryHeap,
 };
 
-pub struct PriorityQueue<T> {
+pub struct Priority<T> {
     heap: BinaryHeap<PriorityQueueItem<T>>,
 }
 
@@ -13,15 +13,15 @@ struct PriorityQueueItem<T> {
     priority: usize,
 }
 
-impl<T: Eq> PriorityQueue<T> {
-    pub fn new() -> PriorityQueue<T> {
-        PriorityQueue {
+impl<T: Eq> Priority<T> {
+    pub fn new() -> Priority<T> {
+        Priority {
             heap: BinaryHeap::new(),
         }
     }
 
     pub fn push(&mut self, item: T, priority: usize) {
-        self.heap.push(PriorityQueueItem { item, priority })
+        self.heap.push(PriorityQueueItem { item, priority });
     }
 
     pub fn pop(&mut self) -> Option<T> {
@@ -32,7 +32,7 @@ impl<T: Eq> PriorityQueue<T> {
     }
 }
 
-impl<T: Eq> Default for PriorityQueue<T> {
+impl<T: Eq> Default for Priority<T> {
     fn default() -> Self {
         Self::new()
     }
@@ -51,11 +51,11 @@ impl<T: Eq> PartialOrd for PriorityQueueItem<T> {
 
 #[cfg(test)]
 mod tests {
-    use crate::queue::PriorityQueue;
+    use crate::queue::Priority;
 
     #[test]
     fn priority_queue() {
-        let mut pq: PriorityQueue<&str> = PriorityQueue::new();
+        let mut pq: Priority<&str> = Priority::new();
         pq.push("apple", 1);
         pq.push("banana", 0);
         pq.push("melon", 100);

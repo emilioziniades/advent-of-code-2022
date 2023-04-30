@@ -101,7 +101,7 @@ impl Volcano {
 
         for valve in valves_to_prune {
             let neighbours = self.graph.remove(valve).unwrap();
-            for (neighbour, distance_to_prunee) in neighbours.iter() {
+            for (neighbour, distance_to_prunee) in &neighbours {
                 let others: Vec<&isize> = neighbours.keys().filter(|x| x != &neighbour).collect();
                 for other in others {
                     let other_distance_to_prunee =
@@ -144,9 +144,9 @@ fn find_best_route(
                 volcano,
                 dp,
             );
-        } else {
-            return 0;
         }
+
+        return 0;
     }
 
     let state = State {
@@ -178,7 +178,7 @@ fn find_best_route(
             with_elephant,
             volcano,
             dp,
-        ))
+        ));
     }
 
     dp.insert(state, answer);

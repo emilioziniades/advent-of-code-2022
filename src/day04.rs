@@ -4,12 +4,15 @@ pub fn count_assignment_overlaps(
     file: &str,
     filter_func: fn(&(HashSet<i32>, HashSet<i32>)) -> bool,
 ) -> i32 {
-    fs::read_to_string(file)
-        .unwrap()
-        .lines()
-        .map(parse_ranges)
-        .filter(filter_func)
-        .count() as i32
+    i32::try_from(
+        fs::read_to_string(file)
+            .unwrap()
+            .lines()
+            .map(parse_ranges)
+            .filter(filter_func)
+            .count(),
+    )
+    .unwrap()
 }
 
 pub fn has_subset((set_one, set_two): &(HashSet<i32>, HashSet<i32>)) -> bool {
@@ -32,8 +35,8 @@ fn parse_ranges(line: &str) -> (HashSet<i32>, HashSet<i32>) {
         .collect();
     let (start_one, end_one, start_two, end_two) = (numbers[0], numbers[1], numbers[2], numbers[3]);
     (
-        HashSet::from_iter(start_one..end_one + 1),
-        HashSet::from_iter(start_two..end_two + 1),
+        (start_one..=end_one).collect(),
+        (start_two..=end_two).collect(),
     )
 }
 

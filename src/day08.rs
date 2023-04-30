@@ -96,7 +96,7 @@ pub fn count_visible_trees(filename: &str) -> u32 {
         for (y, _) in row.iter().enumerate() {
             let pt = Point { x, y };
             if grid.is_visible(&pt) {
-                visible_count += 1
+                visible_count += 1;
             }
         }
     }

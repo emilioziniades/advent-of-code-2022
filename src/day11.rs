@@ -140,9 +140,10 @@ impl Monkeys {
 
                 new_item /= 3;
 
-                let target_monkey_id = match new_item % self.m[i].test_divisor == 0 {
-                    true => self.m[i].test_true_monkey,
-                    false => self.m[i].test_false_monkey,
+                let target_monkey_id = if new_item % self.m[i].test_divisor == 0 {
+                    self.m[i].test_true_monkey
+                } else {
+                    self.m[i].test_false_monkey
                 };
 
                 self.m[target_monkey_id].items.push_back(new_item);
@@ -159,9 +160,10 @@ impl Monkeys {
 
                 new_item %= self.prime_product;
 
-                let target_monkey_id = match new_item % self.m[i].test_divisor == 0 {
-                    true => self.m[i].test_true_monkey,
-                    false => self.m[i].test_false_monkey,
+                let target_monkey_id = if new_item % self.m[i].test_divisor == 0 {
+                    self.m[i].test_true_monkey
+                } else {
+                    self.m[i].test_false_monkey
                 };
 
                 self.m[target_monkey_id].items.push_back(new_item);
@@ -170,6 +172,7 @@ impl Monkeys {
     }
 }
 
+#[derive(Clone, Copy)]
 pub enum WorryManagement {
     DivByThree,
     ModProductPrimes,

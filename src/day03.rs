@@ -4,7 +4,7 @@ pub fn count_overlap_priority(file: &str) -> i32 {
     fs::read_to_string(file)
         .unwrap()
         .lines()
-        .map(|line| find_overlap(line) as i32)
+        .map(|line| i32::from(find_overlap(line)))
         .sum()
 }
 
@@ -22,7 +22,7 @@ pub fn count_group_priority(file: &str) -> i32 {
                     .collect::<Vec<_>>(),
             )
         })
-        .map(|set| priority(set.iter().next().unwrap()) as i32)
+        .map(|set| i32::from(priority(*set.iter().next().unwrap())))
         .sum()
 }
 
@@ -53,15 +53,14 @@ fn find_overlap(rucksacks: &str) -> u8 {
     let item = item.iter().collect::<Vec<_>>();
     let item = item.first().unwrap();
 
-    priority(item)
+    priority(**item)
 }
 
-fn priority(i: &u8) -> u8 {
-    match i > &90 {
-        // lowercase
-        true => *i - 96,
-        // uppercase
-        false => *i - 38,
+fn priority(i: u8) -> u8 {
+    if i > 90 {
+        i - 96
+    } else {
+        i - 38
     }
 }
 

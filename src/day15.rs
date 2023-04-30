@@ -71,15 +71,15 @@ pub fn find_distress_beacon(file: &str, interval: Interval) -> usize {
 
         if points_count != interval.end + 1 {
             // distress beacon in this row!
-            let x = find_excluded_points(ranges);
-            return (x * MULTIPLIER + y) as usize;
+            let x = find_excluded_points(&ranges);
+            return usize::try_from(x * MULTIPLIER + y).unwrap();
         }
     }
 
     panic!("did not find distress beacon")
 }
 
-fn find_excluded_points(ranges: Vec<Interval>) -> isize {
+fn find_excluded_points(ranges: &[Interval]) -> isize {
     assert_eq!(ranges.len(), 2, "should have two large intervals");
     assert_eq!(
         ranges[0].end + 1,
@@ -124,7 +124,7 @@ fn get_non_beacon_ranges(sensors: &Vec<Sensor>, row: isize) -> Vec<Interval> {
         let row_distance = sensor.position.y.abs_diff(row);
         if beacon_distance >= row_distance {
             // count positions in relevant row
-            let vert_distance = (beacon_distance - row_distance) as isize;
+            let vert_distance = isize::try_from(beacon_distance - row_distance).unwrap();
             let row_start = sensor.position.x - vert_distance;
             let row_end = sensor.position.x + vert_distance;
             ranges.push(Interval::new(row_start, row_end));
