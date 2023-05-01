@@ -170,7 +170,7 @@ fn find_best_route(
         );
     }
 
-    for (next_valve, distance) in volcano.graph.get(&dbg!(valve)).unwrap() {
+    for (next_valve, distance) in volcano.graph.get(&valve).unwrap() {
         answer = answer.max(find_best_route(
             *next_valve,
             opened_valves,

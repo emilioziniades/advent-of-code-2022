@@ -14,7 +14,7 @@ impl Grid {
                         .filter_map(|n| n.parse().ok())
                         .collect::<Vec<u8>>()
                 })
-                .collect::<Vec<_>>(),
+                .collect::<Vec<Vec<u8>>>(),
         )
     }
 

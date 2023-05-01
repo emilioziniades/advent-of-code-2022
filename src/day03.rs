@@ -12,14 +12,14 @@ pub fn count_group_priority(file: &str) -> i32 {
     fs::read_to_string(file)
         .unwrap()
         .lines()
-        .collect::<Vec<_>>()
+        .collect::<Vec<&str>>()
         .chunks(3)
         .map(|group| {
             intersect_all(
                 group
                     .iter()
                     .map(|row| row.bytes().collect::<HashSet<u8>>())
-                    .collect::<Vec<_>>(),
+                    .collect::<Vec<HashSet<u8>>>(),
             )
         })
         .map(|set| i32::from(priority(*set.iter().next().unwrap())))
@@ -50,7 +50,7 @@ fn find_overlap(rucksacks: &str) -> u8 {
     };
 
     let item = intersect_all(vec![set_one, set_two]);
-    let item = item.iter().collect::<Vec<_>>();
+    let item = item.iter().collect::<Vec<&u8>>();
     let item = item.first().unwrap();
 
     priority(**item)
