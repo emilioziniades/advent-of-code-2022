@@ -82,6 +82,7 @@ pub fn find_human_number(filename: &str) -> usize {
     expressions.insert("humn", Yell::Variable);
 
     let tree = parse_tree(&expressions, "root");
+    let tree = prune_tree(tree);
     // println!("{tree:#?}");
 
     let (left_tree, right_tree) = match tree {
@@ -90,12 +91,31 @@ pub fn find_human_number(filename: &str) -> usize {
         Node::Expression { left, right, .. } => (Box::clone(&left), Box::clone(&right)),
     };
 
-    let (number, variable_tree) = if node_has_variable(&left_tree) {
-        (evaluate_tree(&right_tree), *left_tree)
-    } else if node_has_variable(&right_tree) {
-        (evaluate_tree(&left_tree), *right_tree)
-    } else {
-        panic!("neither tree leaf has variable")
+    let (number, variable_tree) = match (*left_tree, *right_tree) {
+        (
+            Node::Number(n),
+            Node::Expression {
+                left,
+                operator,
+                right,
+            },
+        )
+        | (
+            Node::Expression {
+                left,
+                operator,
+                right,
+            },
+            Node::Number(n),
+        ) => (
+            n,
+            Node::Expression {
+                left,
+                operator,
+                right,
+            },
+        ),
+        (_, _) => panic!("unexpected top level branches"),
     };
 
     solve_for_variable(variable_tree, number)
@@ -107,6 +127,9 @@ fn solve_for_variable(
     // the number on the other side of the tree we want to make the above equal to
     number: usize,
 ) -> usize {
+    println!("{variable_tree:#?}");
+    println!("{number:#?}");
+    println!("");
     match variable_tree {
         Node::Number(_) => todo!(),
         Node::Variable => number,
@@ -134,14 +157,7 @@ fn solve_for_variable(
                 };
                 return solve_for_variable(*right, new_number);
             } else {
-                let left = evaluate_tree(&left);
-                let right = evaluate_tree(&right);
-                return match operator {
-                    Operator::Plus => left + right,
-                    Operator::Minus => left - right,
-                    Operator::Multiply => left * right,
-                    Operator::Divide => left / right,
-                };
+                panic!("neither branch has variable");
             }
         }
     }
@@ -195,11 +211,47 @@ fn node_has_variable(node: &Node) -> bool {
     }
 }
 
+fn prune_tree(node: Node) -> Node {
+    match node {
+        Node::Number(n) => Node::Number(n),
+        Node::Variable => Node::Variable,
+        Node::Expression {
+            left,
+            operator,
+            right,
+        } => {
+            if node_has_variable(&left) {
+                let left = prune_tree(*left);
+                let right = evaluate_tree(&right);
+                Node::Expression {
+                    left: Box::new(left),
+                    operator,
+                    right: Box::new(Node::Number(right)),
+                }
+            } else if node_has_variable(&right) {
+                let left = evaluate_tree(&left);
+                let right = prune_tree(*right);
+                Node::Expression {
+                    left: Box::new(Node::Number(left)),
+                    operator,
+                    right: Box::new(right),
+                }
+            } else {
+                panic!("neither branch has variable");
+            }
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
-    use crate::{day21, fetch_input};
+    use crate::{
+        day21::{self, prune_tree, solve_for_variable, Node},
+        fetch_input,
+    };
 
     #[test]
+    // #[ignore]
     fn find_root_number() {
         fetch_input(21);
 
@@ -215,6 +267,7 @@ mod tests {
     }
 
     #[test]
+    // #[ignore]
     fn find_human_number() {
         fetch_input(21);
 
@@ -226,5 +279,69 @@ mod tests {
             let got = day21::find_human_number(infile);
             assert_eq!(got, want, "got {got}, wanted {want}");
         }
+    }
+
+    #[test]
+    #[ignore]
+    fn tree_with_multiple_evaluable_branches() {
+        use day21::Node::*;
+        use day21::Operator::*;
+        // 3 = ((2 - x) + 1)
+        // 2 = 2 - x
+        // x = 0
+        let tree = Expression {
+            left: Box::new(Number(3)),
+            operator: Plus,
+            right: Box::new(Expression {
+                left: Box::new(Expression {
+                    left: Box::new(Number(2)),
+                    operator: Minus,
+                    right: Box::new(Variable),
+                }),
+                operator: Plus,
+                right: Box::new(Number(1)),
+            }),
+        };
+
+        let tree = prune_tree(tree);
+        println!("{tree:#?}");
+        println!("");
+
+        let (left_tree, right_tree) = match tree {
+            Node::Number(_) => panic!("expected expression"),
+            Node::Variable => panic!("expected expression"),
+            Node::Expression { left, right, .. } => (Box::clone(&left), Box::clone(&right)),
+        };
+
+        let (number, variable_tree) = match (*left_tree, *right_tree) {
+            (
+                Node::Number(n),
+                Node::Expression {
+                    left,
+                    operator,
+                    right,
+                },
+            )
+            | (
+                Node::Expression {
+                    left,
+                    operator,
+                    right,
+                },
+                Node::Number(n),
+            ) => (
+                n,
+                Node::Expression {
+                    left,
+                    operator,
+                    right,
+                },
+            ),
+            (_, _) => panic!("unexpected top level branches"),
+        };
+
+        let actual = solve_for_variable(variable_tree, number);
+        let expected = 0;
+        assert_eq!(actual, expected);
     }
 }
