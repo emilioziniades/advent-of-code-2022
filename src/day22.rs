@@ -1,23 +1,41 @@
-use std::{collections::HashSet, fmt::Display, fs};
+use std::{collections::HashMap, fmt::Display, fs};
 
-#[derive(Debug, Eq, PartialEq, Hash)]
+#[derive(Debug, Eq, PartialEq, Hash, Clone, Copy)]
 struct Point {
-    col: usize,
-    row: usize,
+    col: isize,
+    row: isize,
 }
 
 #[derive(Debug)]
 enum Instruction {
-    Forward(usize),
+    Forward(isize),
     RotateLeft,
     RotateRight,
 }
 
 #[derive(Debug)]
+enum Tile {
+    Open,
+    Wall,
+}
+
+#[derive(Debug)]
 struct Input {
-    tiles: HashSet<Point>,
-    walls: HashSet<Point>,
+    tiles: HashMap<Point, Tile>,
     instructions: Vec<Instruction>,
+}
+impl Input {
+    fn next_point<F, M>(&self, filter: F, max_key: M) -> &Point
+    where
+        F: Fn(&&Point) -> bool,
+        M: Fn(&&Point) -> isize,
+    {
+        self.tiles
+            .keys()
+            .filter(filter)
+            .max_by_key(max_key)
+            .unwrap()
+    }
 }
 
 impl From<String> for Input {
@@ -28,8 +46,7 @@ impl From<String> for Input {
         };
 
         let mut input = Input {
-            tiles: HashSet::new(),
-            walls: HashSet::new(),
+            tiles: HashMap::new(),
             instructions: Vec::new(),
         };
 
@@ -37,10 +54,10 @@ impl From<String> for Input {
             for (cell, col) in map_row.chars().zip(1..) {
                 match cell {
                     '#' => {
-                        input.walls.insert(Point { col, row });
+                        input.tiles.insert(Point { col, row }, Tile::Wall);
                     }
                     '.' => {
-                        input.tiles.insert(Point { col, row });
+                        input.tiles.insert(Point { col, row }, Tile::Open);
                     }
                     ' ' => (),
                     _ => panic!("unexpected input"),
@@ -77,38 +94,35 @@ impl From<String> for Input {
 
 impl Display for Input {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let max_wall_col = self.walls.iter().max_by_key(|c| c.col).unwrap();
-        let max_tile_col = self.tiles.iter().max_by_key(|c| c.col).unwrap();
-        let max_wall_row = self.walls.iter().max_by_key(|c| c.row).unwrap();
-        let max_tile_row = self.tiles.iter().max_by_key(|c| c.row).unwrap();
-
-        let max_col = max_wall_col.col.max(max_tile_col.col);
-        let max_row = max_wall_row.row.max(max_tile_row.row);
+        let max_col = self.tiles.keys().max_by_key(|point| point.col).unwrap().col;
+        let max_row = self.tiles.keys().max_by_key(|point| point.row).unwrap().row;
 
         for row in 1..max_row {
             for col in 1..max_col {
                 let point = Point { col, row };
-                if self.tiles.contains(&point) {
-                    write!(f, ".")?;
-                } else if self.walls.contains(&point) {
-                    write!(f, "#")?;
+                if let Some(tile) = self.tiles.get(&point) {
+                    match tile {
+                        Tile::Open => write!(f, ".")?,
+                        Tile::Wall => write!(f, "#")?,
+                    }
                 } else {
                     write!(f, " ")?;
                 }
             }
-            write!(f, "\n")?;
+            writeln!(f)?;
         }
 
         Ok(())
     }
 }
 
-#[derive(Debug, Clone, Copy)]
-enum Direction {
-    Up,
-    Right,
-    Down,
-    Left,
+#[derive(Debug)]
+struct Direction(isize);
+impl Direction {
+    const RIGHT: isize = 0;
+    const DOWN: isize = 1;
+    const LEFT: isize = 2;
+    const UP: isize = 3;
 }
 
 #[derive(Debug)]
@@ -118,209 +132,115 @@ struct State {
 }
 
 impl State {
+    fn new(input: &Input) -> Self {
+        let top_left_col = input
+            .tiles
+            .keys()
+            .filter(|point| point.row == 1)
+            .min_by_key(|point| point.col)
+            .unwrap()
+            .col;
+
+        Self {
+            position: Point {
+                col: top_left_col,
+                row: 1,
+            },
+            facing: Direction(Direction::RIGHT),
+        }
+    }
+
     fn step(&mut self) {
-        match self.facing {
-            Direction::Up => self.position.row -= 1,
-            Direction::Right => self.position.col += 1,
-            Direction::Down => self.position.row += 1,
-            Direction::Left => self.position.col -= 1,
+        match self.facing.0 {
+            Direction::UP => self.position.row -= 1,
+            Direction::RIGHT => self.position.col += 1,
+            Direction::DOWN => self.position.row += 1,
+            Direction::LEFT => self.position.col -= 1,
+            _ => panic!("invalid direction: {:?}", self.facing),
         }
     }
 
     fn step_back(&mut self) {
-        match self.facing {
-            Direction::Up => self.position.row += 1,
-            Direction::Right => self.position.col -= 1,
-            Direction::Down => self.position.row -= 1,
-            Direction::Left => self.position.col += 1,
+        match self.facing.0 {
+            Direction::UP => self.position.row += 1,
+            Direction::RIGHT => self.position.col -= 1,
+            Direction::DOWN => self.position.row -= 1,
+            Direction::LEFT => self.position.col += 1,
+            _ => panic!("invalid direction: {:?}", self.facing),
         }
     }
 
     fn rotate(&mut self, instruction: &Instruction) {
-        match (instruction, self.facing) {
-            (Instruction::RotateLeft, Direction::Up) => self.facing = Direction::Left,
-            (Instruction::RotateLeft, Direction::Right) => self.facing = Direction::Up,
-            (Instruction::RotateLeft, Direction::Down) => self.facing = Direction::Right,
-            (Instruction::RotateLeft, Direction::Left) => self.facing = Direction::Down,
-            (Instruction::RotateRight, Direction::Up) => self.facing = Direction::Right,
-            (Instruction::RotateRight, Direction::Right) => self.facing = Direction::Down,
-            (Instruction::RotateRight, Direction::Down) => self.facing = Direction::Left,
-            (Instruction::RotateRight, Direction::Left) => self.facing = Direction::Up,
-            (Instruction::Forward(_), _) => panic!("cannot rotate on a forward instruction"),
+        match instruction {
+            Instruction::RotateLeft => {
+                self.facing = Direction((self.facing.0 - 1).rem_euclid(4));
+            }
+            Instruction::RotateRight => {
+                self.facing = Direction((self.facing.0 + 1).rem_euclid(4));
+            }
+            Instruction::Forward(_) => panic!("cannot rotate on a forward instruction"),
         }
     }
 }
 
-pub fn find_final_password(filename: &str) -> usize {
+trait WrapAround {
+    fn wrap_around(&self, state: &State) -> Point;
+}
+
+struct TwoDimensionalInput(Input);
+
+impl WrapAround for TwoDimensionalInput {
+    fn wrap_around(&self, state: &State) -> Point {
+        match state.facing.0 {
+            Direction::UP => *self
+                .0
+                .next_point(|pt| pt.col == state.position.col, |pt| pt.row),
+            Direction::RIGHT => *self
+                .0
+                .next_point(|pt| pt.row == state.position.row, |pt| -pt.col),
+            Direction::DOWN => *self
+                .0
+                .next_point(|pt| pt.col == state.position.col, |pt| -pt.row),
+            Direction::LEFT => *self
+                .0
+                .next_point(|pt| pt.row == state.position.row, |pt| pt.col),
+            _ => panic!("invalid direction: {:?}", state.facing),
+        }
+    }
+}
+
+pub fn find_final_password(filename: &str) -> isize {
     let input = Input::from(fs::read_to_string(filename).unwrap());
+    let mut state = State::new(&input);
+    let input = TwoDimensionalInput(input);
 
-    let top_left_col = input
-        .tiles
-        .iter()
-        .filter(|tile| tile.row == 1)
-        .min_by_key(|tile| tile.col)
-        .unwrap()
-        .col;
-
-    let mut state = State {
-        position: Point {
-            col: top_left_col,
-            row: 1,
-        },
-        facing: Direction::Right,
-    };
-
-    let min_row = 1;
-    let min_col = 1;
-    let max_row = input.tiles.iter().max_by_key(|tile| tile.row).unwrap().row;
-    let max_col = input.tiles.iter().max_by_key(|tile| tile.col).unwrap().col;
-
-    for instruction in &input.instructions {
+    for instruction in &input.0.instructions {
         match instruction {
             Instruction::Forward(n) => {
                 for _ in 0..*n {
                     state.step();
-                    if input.tiles.contains(&state.position) {
-                        continue;
-                    } else if input.walls.contains(&state.position) {
-                        state.step_back();
-                        break;
-                    } else if state.position.row > max_row
-                        || state.position.row < min_row
-                        || state.position.col > max_col
-                        || state.position.col < min_col
-                        || (!input.tiles.contains(&state.position)
-                            && !input.walls.contains(&state.position))
-                    {
-                        // we have stepped off the tiles, or gone off the map. step back and wrap around
-                        state.step_back();
-                        match state.facing {
-                            Direction::Up => {
-                                let next_row = input
-                                    .tiles
-                                    .iter()
-                                    .filter(|tile| tile.col == state.position.col)
-                                    .max_by_key(|tile| tile.row)
-                                    .unwrap()
-                                    .row;
-
-                                let next_wall_position = input
-                                    .walls
-                                    .iter()
-                                    .filter(|tile| tile.col == state.position.col)
-                                    .max_by_key(|tile| tile.row);
-
-                                if let Some(next_wall_position) = next_wall_position {
-                                    if next_wall_position.row > next_row {
-                                        // hit a wall on wrap arouond
-                                        break;
-                                    }
-                                }
-
-                                state.position = Point {
-                                    col: state.position.col,
-                                    row: next_row,
-                                };
-                            }
-                            Direction::Right => {
-                                let next_col = input
-                                    .tiles
-                                    .iter()
-                                    .filter(|tile| tile.row == state.position.row)
-                                    .min_by_key(|tile| tile.col)
-                                    .unwrap()
-                                    .col;
-
-                                let next_wall_position = input
-                                    .walls
-                                    .iter()
-                                    .filter(|tile| tile.row == state.position.row)
-                                    .min_by_key(|tile| tile.col);
-
-                                if let Some(next_wall_position) = next_wall_position {
-                                    if next_wall_position.col < next_col {
-                                        // hit a wall on wrap arouond
-                                        break;
-                                    }
-                                }
-
-                                state.position = Point {
-                                    col: next_col,
-                                    row: state.position.row,
-                                };
-                            }
-                            Direction::Down => {
-                                let next_row = input
-                                    .tiles
-                                    .iter()
-                                    .filter(|tile| tile.col == state.position.col)
-                                    .min_by_key(|tile| tile.row)
-                                    .unwrap()
-                                    .row;
-
-                                let next_wall_position = input
-                                    .walls
-                                    .iter()
-                                    .filter(|tile| tile.col == state.position.col)
-                                    .min_by_key(|tile| tile.row);
-
-                                if let Some(next_wall_position) = next_wall_position {
-                                    if next_wall_position.row < next_row {
-                                        // hit a wall on wrap arouond
-                                        break;
-                                    }
-                                }
-
-                                state.position = Point {
-                                    col: state.position.col,
-                                    row: next_row,
-                                };
-                            }
-                            Direction::Left => {
-                                let next_col = input
-                                    .tiles
-                                    .iter()
-                                    .filter(|tile| tile.row == state.position.row)
-                                    .max_by_key(|tile| tile.col)
-                                    .unwrap()
-                                    .col;
-
-                                let next_wall_position = input
-                                    .walls
-                                    .iter()
-                                    .filter(|tile| tile.row == state.position.row)
-                                    .max_by_key(|tile| tile.col);
-
-                                if let Some(next_wall_position) = next_wall_position {
-                                    if next_wall_position.col > next_col {
-                                        // hit a wall on wrap arouond
-                                        break;
-                                    }
-                                }
-
-                                state.position = Point {
-                                    col: next_col,
-                                    row: state.position.row,
-                                };
+                    match input.0.tiles.get(&state.position) {
+                        Some(Tile::Open) => continue,
+                        Some(Tile::Wall) => {
+                            state.step_back();
+                            break;
+                        }
+                        None => {
+                            // we have stepped off the tiles, or gone off the map. step back and wrap around
+                            state.step_back();
+                            let next_point = input.wrap_around(&state);
+                            match input.0.tiles.get(&next_point).unwrap() {
+                                Tile::Wall => break,
+                                Tile::Open => state.position = next_point,
                             }
                         }
-                    } else {
-                        panic!("in an unknown state");
                     }
                 }
             }
             Instruction::RotateLeft | Instruction::RotateRight => state.rotate(instruction),
         }
     }
-
-    let facing_value = match state.facing {
-        Direction::Up => 3,
-        Direction::Right => 0,
-        Direction::Down => 1,
-        Direction::Left => 2,
-    };
-
-    1000 * state.position.row + 4 * state.position.col + facing_value
+    1000 * state.position.row + 4 * state.position.col + state.facing.0
 }
 
 #[cfg(test)]
