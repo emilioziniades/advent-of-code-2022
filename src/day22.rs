@@ -36,6 +36,20 @@ impl Input {
             .max_by_key(max_key)
             .unwrap()
     }
+
+    fn two_dimensional_wrap_around(&self, state: &State) -> Point {
+        match state.facing.0 {
+            Direction::UP => *self.next_point(|pt| pt.col == state.position.col, |pt| pt.row),
+            Direction::RIGHT => *self.next_point(|pt| pt.row == state.position.row, |pt| -pt.col),
+            Direction::DOWN => *self.next_point(|pt| pt.col == state.position.col, |pt| -pt.row),
+            Direction::LEFT => *self.next_point(|pt| pt.row == state.position.row, |pt| pt.col),
+            _ => panic!("invalid direction: {:?}", state.facing),
+        }
+    }
+
+    fn three_dimensional_wrap_around(&self, _state: &State) -> Point {
+        todo!("HOW TF DO U WRAP AROUND?")
+    }
 }
 
 impl From<String> for Input {
@@ -183,43 +197,26 @@ impl State {
     }
 }
 
-trait WrapAround {
-    fn wrap_around(&self, state: &State) -> Point;
+enum Wrapping {
+    Flat,
+    Cube,
 }
 
-struct TwoDimensionalInput(Input);
+fn follow_instructions(filename: &str, wrapping: &Wrapping) -> isize {
+    let wrap_around = match wrapping {
+        Wrapping::Flat => Input::two_dimensional_wrap_around,
+        Wrapping::Cube => Input::three_dimensional_wrap_around,
+    };
 
-impl WrapAround for TwoDimensionalInput {
-    fn wrap_around(&self, state: &State) -> Point {
-        match state.facing.0 {
-            Direction::UP => *self
-                .0
-                .next_point(|pt| pt.col == state.position.col, |pt| pt.row),
-            Direction::RIGHT => *self
-                .0
-                .next_point(|pt| pt.row == state.position.row, |pt| -pt.col),
-            Direction::DOWN => *self
-                .0
-                .next_point(|pt| pt.col == state.position.col, |pt| -pt.row),
-            Direction::LEFT => *self
-                .0
-                .next_point(|pt| pt.row == state.position.row, |pt| pt.col),
-            _ => panic!("invalid direction: {:?}", state.facing),
-        }
-    }
-}
-
-pub fn find_final_password(filename: &str) -> isize {
     let input = Input::from(fs::read_to_string(filename).unwrap());
     let mut state = State::new(&input);
-    let input = TwoDimensionalInput(input);
 
-    for instruction in &input.0.instructions {
+    for instruction in &input.instructions {
         match instruction {
             Instruction::Forward(n) => {
                 for _ in 0..*n {
                     state.step();
-                    match input.0.tiles.get(&state.position) {
+                    match input.tiles.get(&state.position) {
                         Some(Tile::Open) => continue,
                         Some(Tile::Wall) => {
                             state.step_back();
@@ -228,8 +225,8 @@ pub fn find_final_password(filename: &str) -> isize {
                         None => {
                             // we have stepped off the tiles, or gone off the map. step back and wrap around
                             state.step_back();
-                            let next_point = input.wrap_around(&state);
-                            match input.0.tiles.get(&next_point).unwrap() {
+                            let next_point = wrap_around(&input, &state);
+                            match input.tiles.get(&next_point).unwrap() {
                                 Tile::Wall => break,
                                 Tile::Open => state.position = next_point,
                             }
@@ -243,6 +240,14 @@ pub fn find_final_password(filename: &str) -> isize {
     1000 * state.position.row + 4 * state.position.col + state.facing.0
 }
 
+pub fn find_password(filename: &str) -> isize {
+    follow_instructions(filename, &Wrapping::Flat)
+}
+
+pub fn find_password_with_cube_wrapping(filename: &str) -> isize {
+    follow_instructions(filename, &Wrapping::Cube)
+}
+
 #[cfg(test)]
 mod tests {
     use crate::{day22, fetch_input};
@@ -254,7 +259,23 @@ mod tests {
         let tests = vec![("example/day22.txt", 6032), ("input/day22.txt", 88226)];
 
         for (infile, want) in tests {
-            let got = day22::find_final_password(infile);
+            let got = day22::find_password(infile);
+            assert_eq!(got, want, "got {got}, wanted {want}");
+        }
+    }
+
+    #[test]
+    #[ignore]
+    fn find_final_password_on_cube_net() {
+        fetch_input(22);
+
+        let tests = vec![
+            ("example/day22.txt", 5031),
+            // ("input/day22.txt", 000000000000000),
+        ];
+
+        for (infile, want) in tests {
+            let got = day22::find_password_with_cube_wrapping(infile);
             assert_eq!(got, want, "got {got}, wanted {want}");
         }
     }
