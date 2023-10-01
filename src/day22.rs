@@ -23,6 +23,7 @@ enum Tile {
 struct Input {
     tiles: HashMap<Point, Tile>,
     instructions: Vec<Instruction>,
+    face_size: usize,
 }
 impl Input {
     fn next_point<F, M>(&self, filter: F, max_key: M) -> &Point
@@ -47,13 +48,16 @@ impl Input {
         }
     }
 
-    fn three_dimensional_wrap_around(&self, _state: &State) -> Point {
+    fn three_dimensional_wrap_around(&self, state: &State) -> Point {
+        println!("{state:#?}");
+        println!("{self}");
+        println!("{}", self.face_size);
+        // determine cube faces
+
         todo!("HOW TF DO U WRAP AROUND?")
     }
-}
 
-impl From<String> for Input {
-    fn from(raw_input: String) -> Self {
+    fn new(raw_input: String, face_size: usize) -> Self {
         let (map_rows, instructions): (Vec<&str>, &str) = {
             let (map, instructions) = raw_input.split_once("\n\n").unwrap();
             (map.lines().collect(), instructions.trim())
@@ -62,6 +66,7 @@ impl From<String> for Input {
         let mut input = Input {
             tiles: HashMap::new(),
             instructions: Vec::new(),
+            face_size,
         };
 
         for (map_row, row) in map_rows.into_iter().zip(1..) {
@@ -202,13 +207,13 @@ enum Wrapping {
     Cube,
 }
 
-fn follow_instructions(filename: &str, wrapping: &Wrapping) -> isize {
+fn follow_instructions(filename: &str, wrapping: &Wrapping, face_size: usize) -> isize {
     let wrap_around = match wrapping {
         Wrapping::Flat => Input::two_dimensional_wrap_around,
         Wrapping::Cube => Input::three_dimensional_wrap_around,
     };
 
-    let input = Input::from(fs::read_to_string(filename).unwrap());
+    let input = Input::new(fs::read_to_string(filename).unwrap(), face_size);
     let mut state = State::new(&input);
 
     for instruction in &input.instructions {
@@ -240,42 +245,48 @@ fn follow_instructions(filename: &str, wrapping: &Wrapping) -> isize {
     1000 * state.position.row + 4 * state.position.col + state.facing.0
 }
 
-pub fn find_password(filename: &str) -> isize {
-    follow_instructions(filename, &Wrapping::Flat)
+pub fn find_password(filename: &str, face_size: usize) -> isize {
+    follow_instructions(filename, &Wrapping::Flat, face_size)
 }
 
-pub fn find_password_with_cube_wrapping(filename: &str) -> isize {
-    follow_instructions(filename, &Wrapping::Cube)
+pub fn find_password_with_cube_wrapping(filename: &str, face_size: usize) -> isize {
+    follow_instructions(filename, &Wrapping::Cube, face_size)
 }
 
 #[cfg(test)]
 mod tests {
     use crate::{day22, fetch_input};
 
+    const SMALL_FACE: usize = 4;
+    const BIG_FACE: usize = 50;
+
     #[test]
+    #[ignore]
     fn find_final_password() {
         fetch_input(22);
 
-        let tests = vec![("example/day22.txt", 6032), ("input/day22.txt", 88226)];
+        let tests = vec![
+            ("example/day22.txt", SMALL_FACE, 6032),
+            ("input/day22.txt", BIG_FACE, 88226),
+        ];
 
-        for (infile, want) in tests {
-            let got = day22::find_password(infile);
+        for (infile, face_size, want) in tests {
+            let got = day22::find_password(infile, face_size);
             assert_eq!(got, want, "got {got}, wanted {want}");
         }
     }
 
     #[test]
-    #[ignore]
     fn find_final_password_on_cube_net() {
         fetch_input(22);
 
         let tests = vec![
-            ("example/day22.txt", 5031),
-            // ("input/day22.txt", 000000000000000),
+            ("example/day22.txt", SMALL_FACE, 5031),
+            // ("input/day22.txt", BIG_FACE, 000000000000000),
         ];
 
-        for (infile, want) in tests {
-            let got = day22::find_password_with_cube_wrapping(infile);
+        for (infile, face_size, want) in tests {
+            let got = day22::find_password_with_cube_wrapping(infile, face_size);
             assert_eq!(got, want, "got {got}, wanted {want}");
         }
     }
