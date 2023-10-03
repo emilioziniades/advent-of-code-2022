@@ -1,6 +1,6 @@
 use std::collections::{HashMap, HashSet};
 
-#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct Point {
     x: i64,
     y: i64,
@@ -10,9 +10,18 @@ impl Point {
     fn new(x: i64, y: i64) -> Self {
         Self { x, y }
     }
+
+    fn neighbours(&self) -> [(Self, Direction); 4] {
+        [
+            (Self::new(self.x - 1, self.y), Direction::Up),
+            (Self::new(self.x, self.y + 1), Direction::Right),
+            (Self::new(self.x + 1, self.y), Direction::Down),
+            (Self::new(self.x, self.y - 1), Direction::Left),
+        ]
+    }
 }
 
-#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Copy)]
 pub enum Side {
     Top,
     Right,
@@ -22,90 +31,101 @@ pub enum Side {
     Bottom,
 }
 
+#[derive(Debug, Clone, Copy)]
 pub enum Direction {
-    Up,
-    Right,
-    Left,
-    Down,
+    Up = 0,
+    Right = 90,
+    Down = 180,
+    Left = 270,
 }
 
-pub fn side_face(current_side: Side, direction: Direction) -> Side {
-    match (current_side, direction) {
-        (Side::Top, Direction::Up) => Side::Back,
-        (Side::Right, Direction::Right) => Side::Bottom,
-        (Side::Left, Direction::Left) => Side::Bottom,
-        (Side::Bottom, Direction::Down) => Side::Back,
-
-        (Side::Top, Direction::Right) => Side::Right,
-        (Side::Front, Direction::Right) => Side::Right,
-        (Side::Back, Direction::Left) => Side::Right,
-        (Side::Bottom, Direction::Left) => Side::Right,
-
-        (Side::Top, Direction::Left) => Side::Left,
-        (Side::Front, Direction::Left) => Side::Left,
-        (Side::Back, Direction::Right) => Side::Left,
-        (Side::Bottom, Direction::Right) => Side::Left,
-
-        (Side::Top, Direction::Down) => Side::Front,
-        (Side::Right, Direction::Left) => Side::Front,
-        (Side::Left, Direction::Right) => Side::Front,
-        (Side::Bottom, Direction::Up) => Side::Front,
-
-        (Side::Front, Direction::Up) => Side::Top,
-        (Side::Right, Direction::Up) => Side::Top,
-        (Side::Back, Direction::Up) => Side::Top,
-        (Side::Left, Direction::Up) => Side::Top,
-
-        (Side::Front, Direction::Down) => Side::Bottom,
-        (Side::Right, Direction::Down) => Side::Front,
-        (Side::Back, Direction::Down) => Side::Bottom,
-        (Side::Left, Direction::Down) => Side::Bottom,
+impl Direction {
+    fn rotate(&self, degrees: i64) -> Self {
+        let rotated_direction = (*self as i64 + degrees).rem_euclid(360);
+        rotated_direction.into()
     }
 }
 
-pub fn cube_from_net(points: HashSet<Point>) -> HashMap<Point, Side> {
-    let mut cube = HashMap::new();
+impl From<i64> for Direction {
+    fn from(value: i64) -> Self {
+        match value {
+            0 => Self::Up,
+            90 => Self::Right,
+            180 => Self::Down,
+            270 => Self::Left,
+            _ => panic!("invalid direction"),
+        }
+    }
+}
+
+// this is if you are looking at the side face on! It does not
+// account for rotation
+pub fn side_face(side: Side, direction: Direction) -> Side {
+    match (side, direction) {
+        (Side::Top, Direction::Up) => Side::Back,
+        (Side::Top, Direction::Right) => Side::Right,
+        (Side::Top, Direction::Left) => Side::Left,
+        (Side::Top, Direction::Down) => Side::Front,
+
+        (Side::Right, Direction::Up) => Side::Top,
+        (Side::Right, Direction::Right) => Side::Back,
+        (Side::Right, Direction::Left) => Side::Front,
+        (Side::Right, Direction::Down) => Side::Bottom,
+
+        (Side::Front, Direction::Up) => Side::Top,
+        (Side::Front, Direction::Right) => Side::Right,
+        (Side::Front, Direction::Left) => Side::Left,
+        (Side::Front, Direction::Down) => Side::Bottom,
+
+        (Side::Back, Direction::Up) => Side::Top,
+        (Side::Back, Direction::Right) => Side::Left,
+        (Side::Back, Direction::Left) => Side::Right,
+        (Side::Back, Direction::Down) => Side::Bottom,
+
+        (Side::Left, Direction::Up) => Side::Top,
+        (Side::Left, Direction::Right) => Side::Front,
+        (Side::Left, Direction::Left) => Side::Back,
+        (Side::Left, Direction::Down) => Side::Bottom,
+
+        (Side::Bottom, Direction::Up) => Side::Front,
+        (Side::Bottom, Direction::Right) => Side::Left,
+        (Side::Bottom, Direction::Left) => Side::Right,
+        (Side::Bottom, Direction::Down) => Side::Back,
+    }
+}
+
+pub fn fold_cube(points: HashSet<Point>) -> HashMap<Point, Side> {
     let top_left_face = points
         .iter()
         .min_by_key(|face| face.y + face.x * 1000)
         .unwrap();
 
-    cube.insert(*top_left_face, Side::Top);
-    let mut queue = vec![(*top_left_face, Side::Top)];
+    let mut faces = HashMap::new();
 
-    while let Some((current_point, current_side)) = queue.pop() {
-        println!("{current_point:?} {current_side:?}");
-        if let Some(down) = points.get(&Point::new(current_point.x + 1, current_point.y)) {
-            if !cube.contains_key(&down) {
-                let side = side_face(current_side, Direction::Down);
-                cube.insert(*down, side);
-                queue.push((*down, side));
+    recursive_fold_cube(&mut faces, &points, *top_left_face, Side::Top, 0);
+
+    faces
+}
+
+pub fn recursive_fold_cube(
+    faces: &mut HashMap<Point, Side>,
+    points: &HashSet<Point>,
+    point: Point,
+    side: Side,
+    mut rotation: i64,
+) {
+    faces.insert(point, side);
+
+    for (neighbour, direction) in point.neighbours() {
+        if points.contains(&neighbour) && !faces.contains_key(&neighbour) {
+            let direction = direction.rotate(rotation);
+            if matches!(side, Side::Top | Side::Bottom) {
+                rotation = direction as i64;
             }
-        }
-        if let Some(up) = points.get(&Point::new(current_point.x - 1, current_point.y)) {
-            if !cube.contains_key(&up) {
-                let side = side_face(current_side, Direction::Up);
-                cube.insert(*up, side);
-                queue.push((*up, side));
-            }
-        }
-        if let Some(left) = points.get(&Point::new(current_point.x, current_point.y - 1)) {
-            if !cube.contains_key(&left) {
-                let side = side_face(current_side, Direction::Left);
-                cube.insert(*left, side);
-                queue.push((*left, side));
-            }
-        }
-        if let Some(right) = points.get(&Point::new(current_point.x, current_point.y + 1)) {
-            if !cube.contains_key(&right) {
-                let side = side_face(current_side, Direction::Right);
-                cube.insert(*right, side);
-                queue.push((*right, side));
-            }
+            let side = side_face(side, direction.into());
+            recursive_fold_cube(faces, points, neighbour, side, rotation);
         }
     }
-
-    cube
 }
 #[cfg(test)]
 mod tests {
@@ -114,13 +134,7 @@ mod tests {
     use pretty_assertions::assert_eq;
 
     #[test]
-    fn fold_cube() {
-        // let tests = vec![HashSet::from_iter(vec![
-        //     Point::new(0, 0),
-        //     Point::new(0, 0),
-        //     Point::new(0, 0),
-        // ])];
-
+    fn fold_cube_test() {
         let nets = HashSet::from([
             Point::new(0, 0),
             Point::new(0, 1),
@@ -130,9 +144,10 @@ mod tests {
             Point::new(3, 1),
         ]);
 
-        let actual_cube_faces = cube_from_net(nets);
+        let mut actual_cube_faces: Vec<(Point, Side)> = fold_cube(nets).into_iter().collect();
+        actual_cube_faces.sort();
 
-        let expected_cube_faces = HashMap::from([
+        let expected_cube_faces = Vec::from([
             (Point::new(0, 0), Side::Top),
             (Point::new(0, 1), Side::Right),
             (Point::new(0, 2), Side::Bottom),
@@ -141,6 +156,6 @@ mod tests {
             (Point::new(3, 1), Side::Back),
         ]);
 
-        assert_eq!(actual_cube_faces, expected_cube_faces)
+        assert_eq!(expected_cube_faces, actual_cube_faces)
     }
 }
