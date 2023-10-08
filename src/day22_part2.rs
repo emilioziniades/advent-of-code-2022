@@ -119,8 +119,22 @@ pub fn recursive_fold_cube(
     for (neighbour, direction) in point.neighbours() {
         if points.contains(&neighbour) && !faces.contains_key(&neighbour) {
             let direction = direction.rotate(rotation);
+            // TODO: when going from bottom to another side, rotation isn't working as
+            // expected
+            // match (side, direction) {
+            //     (Side::Right | Side::Left | Side::Front | Side::Back, _) => (),
+            //     (Side::Top | Side::Bottom, Direction::Up) => rotation += 180,
+            //     (Side::Top | Side::Bottom, Direction::Right) => rotation += 90,
+            //     (Side::Top | Side::Bottom, Direction::Down) => rotation += 0,
+            //     (Side::Top | Side::Bottom, Direction::Left) => rotation += 270,
+            // };
             if matches!(side, Side::Top | Side::Bottom) {
-                rotation = direction as i64;
+                rotation = match direction {
+                    Direction::Up => 180,
+                    Direction::Right => 90,
+                    Direction::Down => 0,
+                    Direction::Left => 270,
+                };
             }
             let side = side_face(side, direction.into());
             recursive_fold_cube(faces, points, neighbour, side, rotation);
@@ -175,7 +189,7 @@ mod tests {
     }
 
     #[test]
-    #[ignore]
+    // #[ignore]
     fn fold_aoc_example_net() {
         let expected_faces = HashMap::from([
             (Point::new(0, 2), Side::Top),
