@@ -133,21 +133,22 @@ mod tests {
     use super::*;
     use pretty_assertions::assert_eq;
 
+    fn fold_cube_test_runner(expected_faces: HashMap<Point, Side>) {
+        let nets = expected_faces.keys().copied().collect();
+        let actual_faces = fold_cube(nets);
+
+        let mut expected_faces: Vec<(Point, Side)> = expected_faces.into_iter().collect();
+        expected_faces.sort();
+
+        let mut actual_faces: Vec<(Point, Side)> = actual_faces.into_iter().collect();
+        actual_faces.sort();
+
+        assert_eq!(expected_faces, actual_faces)
+    }
+
     #[test]
-    fn fold_cube_test() {
-        let nets = HashSet::from([
-            Point::new(0, 0),
-            Point::new(0, 1),
-            Point::new(0, 2),
-            Point::new(1, 1),
-            Point::new(2, 1),
-            Point::new(3, 1),
-        ]);
-
-        let mut actual_cube_faces: Vec<(Point, Side)> = fold_cube(nets).into_iter().collect();
-        actual_cube_faces.sort();
-
-        let expected_cube_faces = Vec::from([
+    fn fold_t_net() {
+        let expected_faces = HashMap::from([
             (Point::new(0, 0), Side::Top),
             (Point::new(0, 1), Side::Right),
             (Point::new(0, 2), Side::Bottom),
@@ -156,6 +157,35 @@ mod tests {
             (Point::new(3, 1), Side::Back),
         ]);
 
-        assert_eq!(expected_cube_faces, actual_cube_faces)
+        fold_cube_test_runner(expected_faces);
+    }
+
+    #[test]
+    fn fold_cross_net() {
+        let expected_faces = HashMap::from([
+            (Point::new(0, 1), Side::Top),
+            (Point::new(1, 0), Side::Left),
+            (Point::new(1, 1), Side::Front),
+            (Point::new(1, 2), Side::Right),
+            (Point::new(2, 1), Side::Bottom),
+            (Point::new(3, 1), Side::Back),
+        ]);
+
+        fold_cube_test_runner(expected_faces);
+    }
+
+    #[test]
+    #[ignore]
+    fn fold_aoc_example_net() {
+        let expected_faces = HashMap::from([
+            (Point::new(0, 2), Side::Top),
+            (Point::new(1, 2), Side::Front),
+            (Point::new(1, 1), Side::Left),
+            (Point::new(1, 0), Side::Back),
+            (Point::new(2, 2), Side::Bottom),
+            (Point::new(2, 3), Side::Right),
+        ]);
+
+        fold_cube_test_runner(expected_faces);
     }
 }
