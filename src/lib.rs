@@ -28,7 +28,6 @@ pub mod day21;
 pub mod day22;
 
 pub mod queue;
-pub mod day22_part2;
 
 use std::{env, fs, path::Path};
 
