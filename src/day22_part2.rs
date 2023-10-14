@@ -61,6 +61,7 @@ impl From<i64> for Direction {
 // this is if you are looking at the side face on! It does not
 // account for rotation
 pub fn side_face(side: Side, direction: Direction) -> Side {
+    println!("{side:?}\t{direction:?}");
     match (side, direction) {
         (Side::Top, Direction::Up) => Side::Back,
         (Side::Top, Direction::Right) => Side::Right,
@@ -112,20 +113,23 @@ pub fn recursive_fold_cube(
     points: &HashSet<Point>,
     point: Point,
     side: Side,
-    mut rotation: i64,
+    rotation: i64,
 ) {
     faces.insert(point, side);
 
     for (neighbour, direction) in point.neighbours() {
         if points.contains(&neighbour) && !faces.contains_key(&neighbour) {
             let direction = direction.rotate(rotation);
-            rotation += match (side, direction) {
-                (Side::Right | Side::Left | Side::Front | Side::Back, _) => 0,
-                (Side::Top | Side::Bottom, Direction::Up) => 180,
-                (Side::Top | Side::Bottom, Direction::Right) => 90,
-                (Side::Top | Side::Bottom, Direction::Down) => 0,
-                (Side::Top | Side::Bottom, Direction::Left) => 270,
-            };
+            let rotation = rotation
+                + match (side, direction) {
+                    (Side::Top, Direction::Right) => 90,
+                    (Side::Bottom, Direction::Right) => 270,
+                    (Side::Top, Direction::Left) => 270,
+                    (Side::Bottom, Direction::Left) => 90,
+                    (Side::Top | Side::Bottom, Direction::Up) => 180,
+                    (Side::Top | Side::Bottom, Direction::Down) => 0,
+                    (_, _) => 0,
+                };
             let side = side_face(side, direction.into());
             recursive_fold_cube(faces, points, neighbour, side, rotation);
         }
@@ -187,6 +191,20 @@ mod tests {
             (Point::new(1, 0), Side::Back),
             (Point::new(2, 2), Side::Bottom),
             (Point::new(2, 3), Side::Right),
+        ]);
+
+        fold_cube_test_runner(expected_faces);
+    }
+
+    #[test]
+    fn fold_aoc_input_net() {
+        let expected_faces = HashMap::from([
+            (Point::new(0, 1), Side::Top),
+            (Point::new(0, 2), Side::Right),
+            (Point::new(1, 1), Side::Front),
+            (Point::new(2, 1), Side::Bottom),
+            (Point::new(2, 0), Side::Left),
+            (Point::new(3, 0), Side::Back),
         ]);
 
         fold_cube_test_runner(expected_faces);
