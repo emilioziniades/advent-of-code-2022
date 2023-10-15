@@ -6,8 +6,8 @@ use std::{
 
 #[derive(Debug, Clone, Copy, Hash, PartialOrd, Ord, PartialEq, Eq)]
 struct Point {
-    col: isize,
     row: isize,
+    col: isize,
 }
 
 impl Point {
@@ -71,7 +71,7 @@ pub fn side_face(side: Side, direction: Direction) -> Side {
     }
 }
 
-fn fold_cube(points: HashSet<Point>, face_size: isize) -> HashMap<Point, Side> {
+fn fold_cube(points: HashSet<Point>, face_size: isize) -> HashMap<Point, (Side, isize)> {
     let top_left_face = points
         .iter()
         .min_by_key(|face| face.col + face.row * 1000)
@@ -85,14 +85,14 @@ fn fold_cube(points: HashSet<Point>, face_size: isize) -> HashMap<Point, Side> {
 }
 
 fn recursive_fold_cube(
-    faces: &mut HashMap<Point, Side>,
+    faces: &mut HashMap<Point, (Side, isize)>,
     points: &HashSet<Point>,
     face_size: isize,
     point: Point,
     side: Side,
     rotation: isize,
 ) {
-    faces.insert(point, side);
+    faces.insert(point, (side, rotation));
 
     for (neighbour, direction) in point.neighbours(face_size) {
         if points.contains(&neighbour) && !faces.contains_key(&neighbour) {
@@ -131,6 +131,7 @@ struct FlatInput {
     tiles: HashMap<Point, Tile>,
     instructions: Vec<Instruction>,
 }
+
 impl FlatInput {
     fn next_point<F, M>(&self, filter: F, max_key: M) -> &Point
     where
@@ -311,19 +312,21 @@ impl State {
 }
 
 trait Input {
-    fn wrap_around(&self, state: &State) -> Point;
+    fn wrap_around(&self, state: &State) -> (Point, Direction);
     fn instructions(&self) -> &[Instruction];
     fn get_tile(&self, point: &Point) -> Option<&Tile>;
 }
 
 impl Input for FlatInput {
-    fn wrap_around(&self, state: &State) -> Point {
-        match state.facing {
+    fn wrap_around(&self, state: &State) -> (Point, Direction) {
+        let next_point = match state.facing {
             Direction::Up => *self.next_point(|pt| pt.col == state.position.col, |pt| pt.row),
             Direction::Right => *self.next_point(|pt| pt.row == state.position.row, |pt| -pt.col),
             Direction::Down => *self.next_point(|pt| pt.col == state.position.col, |pt| -pt.row),
             Direction::Left => *self.next_point(|pt| pt.row == state.position.row, |pt| pt.col),
-        }
+        };
+
+        (next_point, state.facing)
     }
 
     fn instructions(&self) -> &[Instruction] {
@@ -337,7 +340,8 @@ impl Input for FlatInput {
 
 struct ThreeDimensionalInput {
     input: FlatInput,
-    cube_faces: HashMap<Side, Point>,
+    cube_faces: HashMap<(Side, isize), Point>,
+    face_size: isize,
 }
 
 impl ThreeDimensionalInput {
@@ -348,13 +352,87 @@ impl ThreeDimensionalInput {
             .into_iter()
             .map(|(point, side)| (side, point))
             .collect();
-        Self { input, cube_faces }
+        Self {
+            input,
+            cube_faces,
+            face_size,
+        }
     }
 }
 
 impl Input for ThreeDimensionalInput {
-    fn wrap_around(&self, _state: &State) -> Point {
-        todo!()
+    fn wrap_around(&self, state: &State) -> (Point, Direction) {
+        // ugh, this whole method is a mess right now. I've completed
+        // the first part of the puzzle: folding the net into a cube.
+        // But what's missing is the orientation of each cube. I know
+        // which cube face I should move to, but no idea which edge I
+        // should arrive at. The concept of "rotation" from the `fold_cube`
+        // method doesn't really help here. That rotates each cube face so that
+        // when you arrive on that cube face, it's as if you are looking at it front-on,
+        // so that any movement to the next face is correct.
+        //
+        // What I need is some way of pairing edges together. The easy ones are where there
+        // is no wrapping at all, but the edges are actually joined on the flat plane.
+        //
+        // When you move off a plane, how do you figure out which edge you land on next?
+        //
+        // I'm too tired to figure this out now, and I feel exhausted after a full day's
+        // work.
+        println!("{:#?}", self.cube_faces);
+        println!("{state:?}");
+        let ((current_face, current_rotation), current_top_left_point) = self
+            .cube_faces
+            .iter()
+            .find(|(_side, point)| {
+                state.position.row >= point.row
+                    && state.position.row < point.row + self.face_size
+                    && state.position.col >= point.col
+                    && state.position.col < point.col + self.face_size
+            })
+            .unwrap();
+
+        let facing = state.facing.rotate(*current_rotation);
+        let next_face = side_face(*current_face, facing);
+        let ((next_face, next_rotation), next_top_left_point) = self
+            .cube_faces
+            .iter()
+            .find(|((side, _), _)| *side == next_face)
+            .unwrap();
+
+        let next_edge = match state.facing {
+            Direction::Up => Direction::Down,
+            Direction::Right => Direction::Left,
+            Direction::Down => Direction::Up,
+            Direction::Left => Direction::Right,
+        };
+        let next_edge = next_edge.rotate(-*next_rotation);
+        println!("{next_edge:?}");
+
+        let delta = match state.facing {
+            Direction::Up | Direction::Down => state.position.col - current_top_left_point.col,
+            Direction::Right | Direction::Left => state.position.row - current_top_left_point.row,
+        };
+
+        let next_point = match next_edge {
+            Direction::Up => Point::new(
+                next_top_left_point.row,
+                next_top_left_point.col + self.face_size - delta,
+            ),
+            Direction::Right => todo!(),
+            Direction::Down => todo!(),
+            Direction::Left => todo!(),
+        };
+
+        let next_facing = match next_edge {
+            Direction::Up => Direction::Down,
+            Direction::Right => Direction::Left,
+            Direction::Down => Direction::Up,
+            Direction::Left => Direction::Right,
+        };
+
+        println!("next point: {next_point:?}");
+
+        (next_point, next_facing)
     }
 
     fn instructions(&self) -> &[Instruction] {
@@ -381,10 +459,13 @@ fn follow_instructions(mut state: State, input: impl Input) -> isize {
                         None => {
                             // we have stepped off the tiles, or gone off the map. step back and wrap around
                             state.step_back();
-                            let next_point = input.wrap_around(&state);
+                            let (next_point, next_facing) = input.wrap_around(&state);
                             match input.get_tile(&next_point).unwrap() {
                                 Tile::Wall => break,
-                                Tile::Open => state.position = next_point,
+                                Tile::Open => {
+                                    state.position = next_point;
+                                    state.facing = next_facing
+                                }
                             }
                         }
                     }
@@ -431,7 +512,7 @@ mod tests {
     }
 
     #[test]
-    #[ignore]
+    // #[ignore]
     fn find_final_password_on_cube_net() {
         fetch_input(22);
 
@@ -453,7 +534,10 @@ mod tests {
         let mut expected_faces: Vec<(Point, Side)> = expected_faces.into_iter().collect();
         expected_faces.sort();
 
-        let mut actual_faces: Vec<(Point, Side)> = actual_faces.into_iter().collect();
+        let mut actual_faces: Vec<(Point, Side)> = actual_faces
+            .into_iter()
+            .map(|(point, (side, _))| (point, side))
+            .collect();
         actual_faces.sort();
 
         assert_eq!(expected_faces, actual_faces)
