@@ -87,34 +87,50 @@ impl Grove {
         Self { elves }
     }
 
-    fn try_move_elf(&self, elf: &Point, direction: &Direction) -> Option<Point> {
+    fn try_move_elf(&self, elf_position: &Point, direction: &Direction) -> Option<Point> {
         match direction {
             Direction::North => {
-                if self.is_occupied([elf.north(), elf.north_east(), elf.north_west()]) {
+                if self.is_occupied([
+                    elf_position.north(),
+                    elf_position.north_east(),
+                    elf_position.north_west(),
+                ]) {
                     None
                 } else {
-                    Some(elf.north())
+                    Some(elf_position.north())
                 }
             }
             Direction::East => {
-                if self.is_occupied([elf.east(), elf.north_east(), elf.south_east()]) {
+                if self.is_occupied([
+                    elf_position.east(),
+                    elf_position.north_east(),
+                    elf_position.south_east(),
+                ]) {
                     None
                 } else {
-                    Some(elf.east())
+                    Some(elf_position.east())
                 }
             }
             Direction::South => {
-                if self.is_occupied([elf.south(), elf.south_west(), elf.south_east()]) {
+                if self.is_occupied([
+                    elf_position.south(),
+                    elf_position.south_west(),
+                    elf_position.south_east(),
+                ]) {
                     None
                 } else {
-                    Some(elf.south())
+                    Some(elf_position.south())
                 }
             }
             Direction::West => {
-                if self.is_occupied([elf.west(), elf.south_west(), elf.north_west()]) {
+                if self.is_occupied([
+                    elf_position.west(),
+                    elf_position.south_west(),
+                    elf_position.north_west(),
+                ]) {
                     None
                 } else {
-                    Some(elf.west())
+                    Some(elf_position.west())
                 }
             }
         }
@@ -124,8 +140,9 @@ impl Grove {
         points.iter().any(|point| self.elves.contains(point))
     }
 
-    fn elf_has_neighbour(&self, elf: &Point) -> bool {
-        elf.neighbours()
+    fn elf_has_neighbour(&self, elf_position: &Point) -> bool {
+        elf_position
+            .neighbours()
             .iter()
             .any(|neighbour| self.elves.contains(neighbour))
     }
@@ -175,7 +192,7 @@ impl Display for Grove {
                     write!(f, ".")?;
                 }
             }
-            write!(f, "\n")?;
+            writeln!(f)?;
         }
 
         Ok(())
@@ -219,7 +236,9 @@ pub fn count_empty_ground_tiles(filename: &str) -> isize {
 
     let grove_area = (largest_x - smallest_x + 1) * (largest_y - smallest_y + 1);
 
-    grove_area - grove.elves.len() as isize
+    let occupied_cells: isize = grove.elves.len().try_into().unwrap();
+
+    grove_area - occupied_cells
 }
 
 pub fn rounds_until_no_movement(filename: &str) -> usize {
