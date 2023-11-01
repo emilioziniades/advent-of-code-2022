@@ -129,7 +129,7 @@ fn collect_directory_data(file: &str) -> Vec<DirectoryData> {
                 root.find(parent_id, &mut parent);
 
                 let Some(parent) = parent else {
-                        panic!("directory should have parent");
+                    panic!("directory should have parent");
                 };
 
                 cwd = parent;
