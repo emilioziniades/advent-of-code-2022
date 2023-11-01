@@ -1,5 +1,7 @@
 use std::fs;
 
+const MINUTES: usize = 24;
+
 #[derive(Debug)]
 struct Blueprint {
     id: usize,
@@ -40,7 +42,7 @@ impl Blueprint {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 struct State {
-    minutes_left: usize,
+    elapsed_minutes: usize,
     ores: usize,
     clays: usize,
     obsidians: usize,
@@ -52,9 +54,9 @@ struct State {
 }
 
 impl State {
-    fn new(total_minutes: usize) -> Self {
+    fn new() -> Self {
         Self {
-            minutes_left: total_minutes,
+            elapsed_minutes: 0,
             ores: 0,
             clays: 0,
             obsidians: 0,
@@ -65,58 +67,192 @@ impl State {
             geodebots: 0,
         }
     }
-    fn tick(&mut self) {
-        self.minutes_left -= 1;
-        self.ores += self.orebots;
-        self.clays += self.claybots;
-        self.obsidians += self.obsidianbots;
-        self.geodes += self.geodebots;
+
+    fn tick(&mut self, minutes: usize) {
+        self.elapsed_minutes += minutes;
+        self.ores += self.orebots * minutes;
+        self.clays += self.claybots * minutes;
+        self.obsidians += self.obsidianbots * minutes;
+        self.geodes += self.geodebots * minutes;
+    }
+
+    fn build_orebot(&mut self, blueprint: &Blueprint) {
+        self.ores -= blueprint.ore_for_orebot;
+        self.orebots += 1;
+    }
+
+    fn build_claybot(&mut self, blueprint: &Blueprint) {
+        self.ores -= blueprint.ore_for_claybot;
+        self.claybots += 1;
+    }
+
+    fn build_obsidianbot(&mut self, blueprint: &Blueprint) {
+        self.ores -= blueprint.ore_for_obsidianbot;
+        self.clays -= blueprint.clay_for_obsidianbot;
+        self.obsidianbots += 1;
+    }
+
+    fn build_geodebot(&mut self, blueprint: &Blueprint) {
+        self.ores -= blueprint.ore_for_geodebot;
+        self.obsidians -= blueprint.obsidian_for_geodebot;
+        self.geodebots += 1;
     }
 }
 
-fn max_geodes(state: &mut State, blueprint: &Blueprint) -> usize {
-    // max ores: 147
-    loop {
-        println!("{state:#?}");
+fn max_geodes(state: State, blueprint: &Blueprint) -> usize {
+    let mut queue: Vec<State> = Vec::new();
+    let mut max_geodes = 0;
+    let mut explored_states = 0;
+    queue.push(state);
 
-        if state.minutes_left == 0 {
-            return state.ores;
-        }
+    let max_orebots = blueprint
+        .ore_for_orebot
+        .max(blueprint.ore_for_claybot)
+        .max(blueprint.ore_for_obsidianbot)
+        .max(blueprint.ore_for_geodebot);
+    let max_claybots = blueprint.clay_for_obsidianbot;
+    let max_obsidianbots = blueprint.obsidian_for_geodebot;
 
-        if state.ores >= blueprint.ore_for_orebot {
-            //units: ore
-            let ore_benefit_from_new_orebot = state.minutes_left - 1;
-            let ore_cost_of_new_orebot = blueprint.ore_for_orebot;
+    while let Some(state) = queue.pop() {
+        explored_states += 1;
 
-            if ore_benefit_from_new_orebot > ore_cost_of_new_orebot {
-                state.ores -= blueprint.ore_for_orebot;
-                state.orebots += 1;
-                state.tick();
-                continue;
+        let max_possible_geodes =
+            state.geodes + (MINUTES - state.elapsed_minutes) * state.geodebots;
+        max_geodes = max_geodes.max(max_possible_geodes);
+
+        // build orebot
+        if state.orebots < max_orebots {
+            if state.ores >= blueprint.ore_for_orebot {
+                // build orebot now
+                let mut state = state;
+                state.tick(1);
+                state.build_orebot(&blueprint);
+                if state.elapsed_minutes < MINUTES {
+                    queue.push(state);
+                }
+            } else {
+                // build orebot later
+                let mut state = state;
+                let minutes_left = div_ceil(blueprint.ore_for_orebot - state.ores, state.orebots);
+                state.tick(minutes_left + 1);
+                state.build_orebot(blueprint);
+                if state.elapsed_minutes < MINUTES {
+                    queue.push(state);
+                }
             }
         }
 
-        // wait
-        state.tick();
+        // build claybot
+        if state.claybots < max_claybots {
+            if state.ores >= blueprint.ore_for_claybot {
+                // build claybot now
+                let mut state = state;
+                state.tick(1);
+                state.build_claybot(blueprint);
+                if state.elapsed_minutes < MINUTES {
+                    queue.push(state);
+                }
+            } else {
+                // build claybot later
+                let mut state = state;
+                let minutes_left = div_ceil(blueprint.ore_for_claybot - state.ores, state.orebots);
+                state.tick(minutes_left + 1);
+                state.build_claybot(blueprint);
+                if state.elapsed_minutes < MINUTES {
+                    queue.push(state);
+                }
+            }
+        }
+
+        // build obsidianbots
+        if state.obsidianbots < max_obsidianbots && state.claybots > 0 {
+            let enough_ore = state.ores >= blueprint.ore_for_obsidianbot;
+            let enough_clay = state.clays >= blueprint.clay_for_obsidianbot;
+
+            if enough_ore && enough_clay {
+                // build obsidianbot now
+                let mut state = state;
+                state.tick(1);
+                state.build_obsidianbot(blueprint);
+                if state.elapsed_minutes < MINUTES {
+                    queue.push(state);
+                }
+            } else {
+                // build obsidianbot later
+                let mut state = state;
+                let minutes_until_ore = if enough_ore {
+                    0
+                } else {
+                    div_ceil(blueprint.ore_for_obsidianbot - state.ores, state.orebots)
+                };
+                let minutes_until_clay = if enough_clay {
+                    0
+                } else {
+                    div_ceil(blueprint.clay_for_obsidianbot - state.clays, state.claybots)
+                };
+                let minutes_left = minutes_until_ore.max(minutes_until_clay);
+                state.tick(minutes_left + 1);
+                state.build_obsidianbot(blueprint);
+                if state.elapsed_minutes < MINUTES {
+                    queue.push(state);
+                }
+            }
+        }
+
+        // build geodebots
+        if state.obsidianbots > 0 {
+            let enough_ore = state.ores >= blueprint.ore_for_geodebot;
+            let enough_obsidian = state.obsidians >= blueprint.obsidian_for_geodebot;
+
+            if enough_ore && enough_obsidian {
+                // build geodebot now
+                let mut state = state;
+                state.tick(1);
+                state.build_geodebot(blueprint);
+                if state.elapsed_minutes < MINUTES {
+                    queue.push(state);
+                }
+            } else {
+                // build geodebot later
+                let mut state = state;
+                let minutes_until_ore = if enough_ore {
+                    0
+                } else {
+                    div_ceil(blueprint.ore_for_geodebot - state.ores, state.orebots)
+                };
+                let minutes_until_obsidian = if enough_obsidian {
+                    0
+                } else {
+                    div_ceil(
+                        blueprint.obsidian_for_geodebot - state.obsidians,
+                        state.obsidianbots,
+                    )
+                };
+                let minutes_left = minutes_until_ore.max(minutes_until_obsidian);
+                state.tick(minutes_left + 1);
+                state.build_geodebot(blueprint);
+                if state.elapsed_minutes < MINUTES {
+                    queue.push(state);
+                }
+            }
+        }
     }
+
+    dbg!(explored_states);
+    dbg!(max_geodes)
 }
 
-fn quality_level(blueprint: Blueprint) -> usize {
-    println!("{blueprint:#?}");
-    const MINUTES: usize = 24;
-    let mut state = State::new(MINUTES + 1);
-    let max_geodes = max_geodes(&mut state, &blueprint);
-
-    max_geodes * blueprint.id
+fn div_ceil(a: usize, b: usize) -> usize {
+    (a + b - 1) / b
 }
 
 pub fn sum_quality_levels(filename: &str) -> usize {
     fs::read_to_string(filename)
         .unwrap()
         .lines()
-        .take(1) // TODO: remove once happy
+        // .take(1) // TODO: remove once happy
         .map(Blueprint::new)
-        .map(quality_level)
+        .map(|blueprint| max_geodes(State::new(), &blueprint) * blueprint.id)
         .sum()
 }
 
