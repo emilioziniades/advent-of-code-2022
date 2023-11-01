@@ -1,7 +1,5 @@
 use std::fs;
 
-const MINUTES: isize = 24;
-
 #[derive(Debug)]
 struct Blueprint {
     id: isize,
@@ -99,7 +97,7 @@ impl State {
     }
 }
 
-fn max_geodes(state: State, blueprint: &Blueprint) -> isize {
+fn max_geodes(state: State, blueprint: &Blueprint, minutes: isize) -> isize {
     let mut queue: Vec<State> = Vec::new();
     let mut max_geodes = 0;
     queue.push(state);
@@ -114,7 +112,7 @@ fn max_geodes(state: State, blueprint: &Blueprint) -> isize {
 
     while let Some(state) = queue.pop() {
         let max_possible_geodes =
-            state.geodes + (MINUTES - state.elapsed_minutes) * state.geodebots;
+            state.geodes + (minutes - state.elapsed_minutes) * state.geodebots;
         max_geodes = max_geodes.max(max_possible_geodes);
 
         // build orebot
@@ -124,7 +122,7 @@ fn max_geodes(state: State, blueprint: &Blueprint) -> isize {
                 div_ceil(blueprint.ore_for_orebot - state.ores, state.orebots).max(0);
             state.tick(minutes_left + 1);
             state.build_orebot(blueprint);
-            if state.elapsed_minutes < MINUTES {
+            if state.elapsed_minutes < minutes {
                 queue.push(state);
             }
         }
@@ -136,7 +134,7 @@ fn max_geodes(state: State, blueprint: &Blueprint) -> isize {
                 div_ceil(blueprint.ore_for_claybot - state.ores, state.orebots).max(0);
             state.tick(minutes_left + 1);
             state.build_claybot(blueprint);
-            if state.elapsed_minutes < MINUTES {
+            if state.elapsed_minutes < minutes {
                 queue.push(state);
             }
         }
@@ -151,7 +149,7 @@ fn max_geodes(state: State, blueprint: &Blueprint) -> isize {
             let minutes_left = minutes_until_ore.max(minutes_until_clay).max(0);
             state.tick(minutes_left + 1);
             state.build_obsidianbot(blueprint);
-            if state.elapsed_minutes < MINUTES {
+            if state.elapsed_minutes < minutes {
                 queue.push(state);
             }
         }
@@ -168,7 +166,7 @@ fn max_geodes(state: State, blueprint: &Blueprint) -> isize {
             let minutes_left = minutes_until_ore.max(minutes_until_obsidian).max(0);
             state.tick(minutes_left + 1);
             state.build_geodebot(blueprint);
-            if state.elapsed_minutes < MINUTES {
+            if state.elapsed_minutes < minutes {
                 queue.push(state);
             }
         }
@@ -186,8 +184,18 @@ pub fn sum_quality_levels(filename: &str) -> isize {
         .unwrap()
         .lines()
         .map(Blueprint::new)
-        .map(|blueprint| max_geodes(State::new(), &blueprint) * blueprint.id)
+        .map(|blueprint| max_geodes(State::new(), &blueprint, 24) * blueprint.id)
         .sum()
+}
+
+pub fn multiply_first_three_blueprints(filename: &str) -> isize {
+    fs::read_to_string(filename)
+        .unwrap()
+        .lines()
+        .take(3)
+        .map(Blueprint::new)
+        .map(|blueprint| max_geodes(State::new(), &blueprint, 32))
+        .product()
 }
 
 #[cfg(test)]
@@ -197,10 +205,21 @@ mod tests {
     #[test]
     fn sum_quality_levels() {
         fetch_input(19);
-        let tests = vec![("example/day19.txt", 33)];
+        let tests = vec![("example/day19.txt", 33), ("input/day19.txt", 1192)];
 
         for (filename, want) in tests {
             let got = day19::sum_quality_levels(filename);
+            assert_eq!(got, want, "got {got}, wanted {want}");
+        }
+    }
+
+    #[test]
+    fn multiply_first_three_blueprints() {
+        fetch_input(19);
+        let tests = vec![("example/day19.txt", 3472), ("input/day19.txt", 0)];
+
+        for (filename, want) in tests {
+            let got = day19::multiply_first_three_blueprints(filename);
             assert_eq!(got, want, "got {got}, wanted {want}");
         }
     }
