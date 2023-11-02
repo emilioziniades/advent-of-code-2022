@@ -71,7 +71,7 @@ pub fn side_face(side: Side, direction: Direction) -> Side {
     }
 }
 
-fn fold_cube(points: HashSet<Point>, face_size: isize) -> HashMap<Point, (Side, isize)> {
+fn fold_cube(points: HashSet<Point>, face_size: isize) -> HashMap<Point, Side> {
     let top_left_face = points
         .iter()
         .min_by_key(|face| face.col + face.row * 1000)
@@ -85,14 +85,14 @@ fn fold_cube(points: HashSet<Point>, face_size: isize) -> HashMap<Point, (Side, 
 }
 
 fn recursive_fold_cube(
-    faces: &mut HashMap<Point, (Side, isize)>,
+    faces: &mut HashMap<Point, Side>,
     points: &HashSet<Point>,
     face_size: isize,
     point: Point,
     side: Side,
     rotation: isize,
 ) {
-    faces.insert(point, (side, rotation));
+    faces.insert(point, side);
 
     for (neighbour, direction) in point.neighbours(face_size) {
         if points.contains(&neighbour) && !faces.contains_key(&neighbour) {
@@ -340,7 +340,7 @@ impl Input for FlatInput {
 
 struct ThreeDimensionalInput {
     input: FlatInput,
-    cube_faces: HashMap<(Side, isize), Point>,
+    cube_faces: HashMap<Side, Point>,
     face_size: isize,
 }
 
@@ -380,7 +380,7 @@ impl Input for ThreeDimensionalInput {
         // work.
         println!("{:#?}", self.cube_faces);
         println!("{state:?}");
-        let ((current_face, current_rotation), current_top_left_point) = self
+        let (current_face, current_top_left_point) = self
             .cube_faces
             .iter()
             .find(|(_side, point)| {
@@ -391,48 +391,7 @@ impl Input for ThreeDimensionalInput {
             })
             .unwrap();
 
-        let facing = state.facing.rotate(*current_rotation);
-        let next_face = side_face(*current_face, facing);
-        let ((next_face, next_rotation), next_top_left_point) = self
-            .cube_faces
-            .iter()
-            .find(|((side, _), _)| *side == next_face)
-            .unwrap();
-
-        let next_edge = match state.facing {
-            Direction::Up => Direction::Down,
-            Direction::Right => Direction::Left,
-            Direction::Down => Direction::Up,
-            Direction::Left => Direction::Right,
-        };
-        let next_edge = next_edge.rotate(-*next_rotation);
-        println!("{next_edge:?}");
-
-        let delta = match state.facing {
-            Direction::Up | Direction::Down => state.position.col - current_top_left_point.col,
-            Direction::Right | Direction::Left => state.position.row - current_top_left_point.row,
-        };
-
-        let next_point = match next_edge {
-            Direction::Up => Point::new(
-                next_top_left_point.row,
-                next_top_left_point.col + self.face_size - delta,
-            ),
-            Direction::Right => todo!(),
-            Direction::Down => todo!(),
-            Direction::Left => todo!(),
-        };
-
-        let next_facing = match next_edge {
-            Direction::Up => Direction::Down,
-            Direction::Right => Direction::Left,
-            Direction::Down => Direction::Up,
-            Direction::Left => Direction::Right,
-        };
-
-        println!("next point: {next_point:?}");
-
-        (next_point, next_facing)
+        todo!()
     }
 
     fn instructions(&self) -> &[Instruction] {
@@ -515,10 +474,7 @@ mod tests {
     fn find_final_password_on_cube_net() {
         fetch_input(22);
 
-        let tests = vec![
-            ("example/day22.txt", SMALL_FACE, 5031),
-            // ("input/day22.txt", BIG_FACE, 000000000000000),
-        ];
+        let tests = vec![("example/day22.txt", SMALL_FACE, 5031)];
 
         for (infile, face_size, want) in tests {
             let got = day22::find_password_with_cube_wrapping(infile, face_size);
@@ -533,10 +489,7 @@ mod tests {
         let mut expected_faces: Vec<(Point, Side)> = expected_faces.into_iter().collect();
         expected_faces.sort();
 
-        let mut actual_faces: Vec<(Point, Side)> = actual_faces
-            .into_iter()
-            .map(|(point, (side, _))| (point, side))
-            .collect();
+        let mut actual_faces: Vec<(Point, Side)> = actual_faces.into_iter().collect();
         actual_faces.sort();
 
         assert_eq!(expected_faces, actual_faces)
