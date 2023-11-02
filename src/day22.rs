@@ -493,7 +493,6 @@ pub fn find_password_with_cube_wrapping(filename: &str, face_size: isize) -> isi
 mod tests {
     use super::*;
     use crate::{day22, fetch_input};
-    use pretty_assertions::assert_eq;
 
     const SMALL_FACE: isize = 4;
     const BIG_FACE: isize = 50;
