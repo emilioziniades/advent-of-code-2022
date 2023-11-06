@@ -118,7 +118,7 @@ impl Graph {
     }
     // A-star with manhattan distance as heuristic
     fn find_shortest_path(&self, search_type: SearchType) -> SolvedPath {
-        let mut frontier: queue::Priority<Point> = queue::Priority::new();
+        let mut frontier: queue::MinPriority<Point> = queue::MinPriority::new();
         frontier.push(self.start, 0);
 
         let mut came_from: HashMap<Point, Point> = HashMap::new();

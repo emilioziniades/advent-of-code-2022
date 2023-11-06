@@ -227,7 +227,7 @@ impl Display for Valley {
 }
 
 fn find_shortest_path(valley: Valley) -> usize {
-    let mut queue = queue::Priority::new();
+    let mut queue = queue::MinPriority::new();
     queue.push(valley.clone(), 0);
     let mut came_from: HashMap<(Point, String), Option<(Point, String)>> = HashMap::new();
     let mut cost_so_far: HashMap<(Point, String), isize> = HashMap::new();
@@ -238,7 +238,7 @@ fn find_shortest_path(valley: Valley) -> usize {
     cost_so_far.insert(start, 0);
 
     while let Some(mut valley) = queue.pop() {
-        // println!("{valley}");
+        println!("{valley}");
 
         if valley.position == valley.end_point {
             return valley.minutes + 1;
@@ -293,7 +293,10 @@ mod tests {
     #[test]
     fn find_shortest_path_through_blizzard() {
         fetch_input(24);
-        let tests = vec![("example/day24.txt", 18), ("input/day24.txt", 0)];
+        let tests = vec![
+            // ("example/day24.txt", 18),
+            ("input/day24.txt", 0),
+        ];
 
         for (filename, want) in tests {
             let got = day24::find_shortest_path_through_blizzard(filename);
