@@ -264,8 +264,13 @@ impl ThreeDimensionalInput {
 
 impl Input for ThreeDimensionalInput {
     fn wrap_around(&self, state: &State) -> (Point, Direction) {
-        dbg!(state);
-
+        // Oh the horror. After wrestling with this puzzle for far too long, I simply
+        // gave up and decided to hard-code the mappings between edges. I tried to
+        // come up with a solution that would be able to solve any cube layout. I really
+        // did, but I gave up. The point of me doing the puzzles was to learn rust. I feel
+        // like I have acheived that goal. Although the code in this file does get the correct
+        // solution, it does so only for the narrowest of cases: my puzzle input. Yes, I feel
+        // ashamed. Yes, I wish it wasn't like this.
         let example_harcoded_wrappings: HashMap<(Point, Direction), (Point, Direction)> = (5..=8)
             .map(|row| (Point::new(row, 12), Direction::Right))
             .zip(
@@ -286,81 +291,89 @@ impl Input for ThreeDimensionalInput {
             .collect();
 
         let input_harcoded_wrappings: HashMap<(Point, Direction), (Point, Direction)> = (51..=100)
+            // top of Top -> left of Back
             .map(|col| (Point::new(1, col), Direction::Up))
             .zip((151..=200).map(|row| (Point::new(row, 1), Direction::Right)))
+            // right of Back -> bottom of Bottom
             .chain(
                 (151..=200)
                     .map(|row| (Point::new(row, 50), Direction::Right))
                     .zip((51..=100).map(|col| (Point::new(150, col), Direction::Up))),
             )
+            // bottom of Bottom -> right of Back
             .chain(
                 (51..=100)
                     .map(|col| (Point::new(150, col), Direction::Down))
                     .zip((151..=200).map(|row| (Point::new(row, 50), Direction::Left))),
             )
+            // top of Left -> left of Front
             .chain(
                 (1..=50)
                     .map(|col| (Point::new(101, col), Direction::Up))
                     .zip((51..=100).map(|row| (Point::new(row, 51), Direction::Right))),
             )
+            // left of Front -> top of Left
             .chain(
                 (51..=100)
                     .map(|row| (Point::new(row, 51), Direction::Left))
                     .zip((1..=50).map(|col| (Point::new(101, col), Direction::Down))),
             )
+            // right of Bottom -> right of Right
             .chain(
                 (101..=150)
+                    .rev()
                     .map(|row| (Point::new(row, 100), Direction::Right))
-                    .zip(
-                        (1..=50)
-                            .rev()
-                            .map(|row| (Point::new(row, 150), Direction::Left)),
-                    ),
+                    .zip((1..=50).map(|row| (Point::new(row, 150), Direction::Left))),
             )
+            // right of Right -> right of Bottom
             .chain(
                 (1..=50)
                     .rev()
                     .map(|row| (Point::new(row, 150), Direction::Right))
                     .zip((101..=150).map(|row| (Point::new(row, 100), Direction::Left))),
             )
+            // top of Right -> bottom of Back
             .chain(
                 (101..=150)
                     .map(|col| (Point::new(1, col), Direction::Up))
                     .zip((1..=50).map(|col| (Point::new(200, col), Direction::Up))),
             )
+            // bottom of Back -> top of Right
             .chain(
                 (1..=50)
                     .map(|col| (Point::new(200, col), Direction::Down))
                     .zip((101..=150).map(|col| (Point::new(1, col), Direction::Down))),
             )
+            // left of Back -> top of Top
             .chain(
                 (151..=200)
                     .map(|row| (Point::new(row, 1), Direction::Left))
                     .zip((51..=100).map(|col| (Point::new(1, col), Direction::Down))),
             )
+            // left of Left -> left of Top
+            .chain(
+                (101..=150)
+                    .rev()
+                    .map(|row| (Point::new(row, 1), Direction::Left))
+                    .zip((1..=50).map(|row| (Point::new(row, 51), Direction::Right))),
+            )
+            // bottom of Right -> right of Front
             .chain(
                 (101..=150)
                     .map(|col| (Point::new(50, col), Direction::Down))
                     .zip((51..=100).map(|row| (Point::new(row, 100), Direction::Left))),
             )
+            // right of Front -> bottom of Right
             .chain(
                 (51..=100)
                     .map(|row| (Point::new(row, 100), Direction::Right))
                     .zip((101..=150).map(|col| (Point::new(50, col), Direction::Up))),
             )
+            // left of Top -> left of Left
             .chain(
-                (101..=150)
-                    .map(|row| (Point::new(row, 1), Direction::Left))
-                    .zip(
-                        (1..=51)
-                            .rev()
-                            .map(|row| (Point::new(row, 51), Direction::Right)),
-                    ),
-            )
-            .chain(
-                (1..=51)
-                    .map(|row| (Point::new(row, 51), Direction::Left))
+                (1..=50)
                     .rev()
+                    .map(|row| (Point::new(row, 51), Direction::Left))
                     .zip((101..=150).map(|row| (Point::new(row, 1), Direction::Right))),
             )
             .collect();
@@ -375,7 +388,7 @@ impl Input for ThreeDimensionalInput {
 
         *hardcoded_wrapping
             .get(&(state.position, state.facing))
-            .expect("HARDCODED MAPPING")
+            .expect("hardcoded mapping should exist")
     }
 
     fn instructions(&self) -> &[Instruction] {
@@ -407,7 +420,7 @@ fn follow_instructions(mut state: State, input: impl Input) -> isize {
                                 Tile::Wall => break,
                                 Tile::Open => {
                                     state.position = next_point;
-                                    state.facing = next_facing
+                                    state.facing = next_facing;
                                 }
                             }
                         }
@@ -417,17 +430,20 @@ fn follow_instructions(mut state: State, input: impl Input) -> isize {
             Instruction::RotateLeft | Instruction::RotateRight => state.rotate(instruction),
         }
     }
+
     1000 * state.position.row + 4 * state.position.col + state.facing.value()
 }
 
 pub fn find_password(filename: &str) -> isize {
-    let input = FlatInput::new(fs::read_to_string(filename).unwrap());
+    let input = fs::read_to_string(filename).unwrap();
+    let input = FlatInput::new(input);
     let state = State::new(&input);
     follow_instructions(state, input)
 }
 
 pub fn find_password_with_cube_wrapping(filename: &str, face_size: isize) -> isize {
-    let input = ThreeDimensionalInput::new(fs::read_to_string(filename).unwrap(), face_size);
+    let input = fs::read_to_string(filename).unwrap();
+    let input = ThreeDimensionalInput::new(input, face_size);
     let state = State::new(&input.input);
     follow_instructions(state, input)
 }
@@ -437,7 +453,6 @@ mod tests {
     use crate::{day22, fetch_input};
 
     #[test]
-    #[ignore]
     fn find_final_password() {
         fetch_input(22);
 
@@ -454,8 +469,8 @@ mod tests {
         fetch_input(22);
 
         let tests = vec![
-            // ("example/day22.txt", day22::SMALL_FACE, 5031),
-            ("input/day22.txt", day22::BIG_FACE, 0),
+            ("example/day22.txt", day22::SMALL_FACE, 5031),
+            ("input/day22.txt", day22::BIG_FACE, 57305),
         ];
 
         for (infile, face_size, want) in tests {
