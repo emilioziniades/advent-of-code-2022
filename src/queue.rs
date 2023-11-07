@@ -34,6 +34,10 @@ impl<T: Eq> MinPriority<T> {
             None => None,
         }
     }
+
+    pub fn clear(&mut self) {
+        self.heap.clear();
+    }
 }
 
 impl<T: Eq> Ord for MinPriorityQueueItem<T> {

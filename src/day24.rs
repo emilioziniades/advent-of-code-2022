@@ -258,13 +258,16 @@ impl Valleys {
 
 // A-star search, using manhattan distance as a heuristic,
 // and representing the state as a struct of current position
-// and valley index in valleys array.
-fn find_shortest_path(valley: Valley) -> isize {
+// and valley index in valleys array. It allows for multiple targets,
+// and treats each target as a new pathfinding problem, clearing the queue,
+// came_from and cost_so_far data structures.
+fn find_shortest_path(valley: Valley, mut targets: Vec<Point>) -> isize {
     let start_state = State {
         valley_id: 0,
         position: valley.start_point(),
     };
-    let end_point = valley.end_point();
+
+    let mut target = targets.pop().unwrap();
 
     let valleys = Valleys::distinct(valley);
 
@@ -276,9 +279,23 @@ fn find_shortest_path(valley: Valley) -> isize {
     came_from.insert(start_state, None);
     cost_so_far.insert(start_state, 0);
 
+    let mut total_time = 0;
+
     while let Some(current) = queue.pop() {
-        if current.position == end_point {
-            return *cost_so_far.get(&current).unwrap();
+        if current.position == target {
+            total_time += *cost_so_far.get(&current).unwrap();
+            if let Some(next_target) = targets.pop() {
+                target = next_target;
+                queue.clear();
+                came_from.clear();
+                cost_so_far.clear();
+
+                queue.push(current, 0);
+                came_from.insert(current, None);
+                cost_so_far.insert(current, 0);
+            } else {
+                break;
+            }
         }
 
         for next in valleys.next_positions(current) {
@@ -286,13 +303,13 @@ fn find_shortest_path(valley: Valley) -> isize {
             if !came_from.contains_key(&next) || Some(&new_cost) < cost_so_far.get(&next) {
                 cost_so_far.insert(next, new_cost);
                 came_from.insert(next, Some(current));
-                let priority = new_cost + manhattan_distance(current.position, end_point);
+                let priority = new_cost + manhattan_distance(current.position, target);
                 queue.push(next, priority.try_into().unwrap());
             }
         }
     }
 
-    panic!("did not get to the end");
+    total_time
 }
 
 fn manhattan_distance(a: Point, b: Point) -> isize {
@@ -302,7 +319,15 @@ fn manhattan_distance(a: Point, b: Point) -> isize {
 pub fn find_shortest_path_through_blizzard(filename: &str) -> isize {
     let input = fs::read_to_string(filename).unwrap();
     let valley = Valley::new(&input);
-    find_shortest_path(valley)
+    let targets = vec![valley.end_point()];
+    find_shortest_path(valley, targets)
+}
+
+pub fn find_shortest_path_through_blizzard_part_two(filename: &str) -> isize {
+    let input = fs::read_to_string(filename).unwrap();
+    let valley = Valley::new(&input);
+    let targets = vec![valley.end_point(), valley.start_point(), valley.end_point()];
+    find_shortest_path(valley, targets)
 }
 
 #[cfg(test)]
@@ -316,6 +341,17 @@ mod tests {
 
         for (filename, want) in tests {
             let got = day24::find_shortest_path_through_blizzard(filename);
+            assert_eq!(got, want, "got {got}, wanted {want}");
+        }
+    }
+
+    #[test]
+    fn find_shortest_path_through_blizzard_part_two() {
+        fetch_input(24);
+        let tests = vec![("example/day24.txt", 54), ("input/day24.txt", 942)];
+
+        for (filename, want) in tests {
+            let got = day24::find_shortest_path_through_blizzard_part_two(filename);
             assert_eq!(got, want, "got {got}, wanted {want}");
         }
     }
