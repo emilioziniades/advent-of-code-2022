@@ -3,25 +3,29 @@ use std::{
     collections::BinaryHeap,
 };
 
-pub struct Priority<T> {
-    heap: BinaryHeap<PriorityQueueItem<T>>,
+// minimum priority queue
+
+pub struct MinPriority<T> {
+    heap: BinaryHeap<MinPriorityQueueItem<T>>,
 }
 
 #[derive(Copy, Clone, Eq, PartialEq)]
-struct PriorityQueueItem<T> {
+struct MinPriorityQueueItem<T> {
     item: T,
     priority: usize,
 }
 
-impl<T: Eq> Priority<T> {
-    pub fn new() -> Priority<T> {
-        Priority {
+impl<T: Eq> Default for MinPriority<T> {
+    fn default() -> Self {
+        Self {
             heap: BinaryHeap::new(),
         }
     }
+}
 
+impl<T: Eq> MinPriority<T> {
     pub fn push(&mut self, item: T, priority: usize) {
-        self.heap.push(PriorityQueueItem { item, priority });
+        self.heap.push(MinPriorityQueueItem { item, priority });
     }
 
     pub fn pop(&mut self) -> Option<T> {
@@ -30,32 +34,32 @@ impl<T: Eq> Priority<T> {
             None => None,
         }
     }
-}
 
-impl<T: Eq> Default for Priority<T> {
-    fn default() -> Self {
-        Self::new()
+    pub fn clear(&mut self) {
+        self.heap.clear();
     }
 }
-impl<T: Eq> Ord for PriorityQueueItem<T> {
+
+impl<T: Eq> Ord for MinPriorityQueueItem<T> {
     fn cmp(&self, other: &Self) -> Ordering {
         // min queue, lower priorities are grabbed first
         other.priority.cmp(&self.priority)
     }
 }
-impl<T: Eq> PartialOrd for PriorityQueueItem<T> {
+
+impl<T: Eq> PartialOrd for MinPriorityQueueItem<T> {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        Some(self.cmp(other))
+        Some(other.priority.cmp(&self.priority))
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::queue::Priority;
+    use crate::queue::MinPriority;
 
     #[test]
-    fn priority_queue() {
-        let mut pq: Priority<&str> = Priority::new();
+    fn min_priority_queue() {
+        let mut pq: MinPriority<&str> = MinPriority::default();
         pq.push("apple", 1);
         pq.push("banana", 0);
         pq.push("melon", 100);
