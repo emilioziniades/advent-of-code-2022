@@ -2,6 +2,7 @@ use std::{
     collections::{HashMap, HashSet},
     fmt::Display,
     fs,
+    ops::Add,
 };
 
 use crate::queue;
@@ -24,6 +25,15 @@ impl Point {
             Direction::Down => Point::new(self.x + 1, self.y),
             Direction::Left => Point::new(self.x, self.y - 1),
         }
+    }
+
+    fn neighbours(self) -> [Self; 4] {
+        [
+            Point::new(self.x - 1, self.y),
+            Point::new(self.x + 1, self.y),
+            Point::new(self.x, self.y + 1),
+            Point::new(self.x, self.y - 1),
+        ]
     }
 }
 
@@ -55,11 +65,8 @@ impl Display for Blizzard {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct Valley {
-    position: Point,
     ground: HashSet<Point>,
     blizzards: HashMap<Point, Vec<Blizzard>>,
-    end_point: Point,
-    minutes: usize,
 }
 
 impl Valley {
@@ -82,7 +89,6 @@ impl Valley {
                     _ => None,
                 };
 
-                // TODO: sort Vec<Blizzard> so that it is represented consistently for DP later
                 if let Some(direction) = direction {
                     blizzards
                         .entry(point)
@@ -92,23 +98,10 @@ impl Valley {
             }
         }
 
-        let position = *ground
-            .iter()
-            .min_by_key(|point| (point.x, point.y))
-            .unwrap();
-
-        let end_point = *ground.iter().max_by_key(|pt| pt.x).unwrap();
-
-        Self {
-            position,
-            ground,
-            blizzards,
-            end_point,
-            minutes: 0,
-        }
+        Self { ground, blizzards }
     }
 
-    fn wrap_around(&self, point: Point, Blizzard(direction): &Blizzard) -> Point {
+    fn wrap_around(&self, point: Point, Blizzard(direction): Blizzard) -> Point {
         match direction {
             Direction::Up => Point::new(
                 self.ground
@@ -150,43 +143,26 @@ impl Valley {
     }
 
     fn tick(&mut self) {
-        self.minutes += 1;
-        let old_blizzards: HashMap<_, _> = self.blizzards.drain().collect();
+        let old_blizzards: HashMap<Point, Vec<Blizzard>> = self.blizzards.drain().collect();
         for (point, blizzards) in old_blizzards {
             for blizzard in blizzards {
                 let new_point = point.neighbour(blizzard.0);
                 let new_point = if self.ground.contains(&new_point) {
                     new_point
                 } else {
-                    self.wrap_around(point, &blizzard.clone())
+                    self.wrap_around(point, blizzard)
                 };
                 self.blizzards.entry(new_point).or_default().push(blizzard);
             }
         }
-
-        for (_point, blizzards) in self.blizzards.iter_mut() {
-            blizzards.sort();
-        }
     }
 
-    fn neighbours(&self) -> [Point; 4] {
-        [
-            Point::new(self.position.x - 1, self.position.y),
-            Point::new(self.position.x + 1, self.position.y),
-            Point::new(self.position.x, self.position.y + 1),
-            Point::new(self.position.x, self.position.y - 1),
-        ]
+    fn end_point(&self) -> Point {
+        *self.ground.iter().max_by_key(|pt| (pt.x, pt.y)).unwrap()
     }
 
-    fn next_positions(&self) -> Vec<Point> {
-        let mut next_positions: Vec<Point> = self
-            .neighbours()
-            .into_iter()
-            .filter(|pt| self.ground.contains(pt) && !self.blizzards.contains_key(pt))
-            .collect();
-        next_positions.push(self.position);
-
-        next_positions
+    fn start_point(&self) -> Point {
+        *self.ground.iter().min_by_key(|pt| (pt.x, pt.y)).unwrap()
     }
 }
 
@@ -199,12 +175,8 @@ impl Display for Valley {
             for y in 0..=max_y {
                 let point = Point::new(x, y);
 
-                if self.position == point {
-                    write!(f, "E",)?;
-                    continue;
-                }
-
                 if let Some(blizzards) = self.blizzards.get(&point) {
+                    assert!(!blizzards.is_empty(), "we have an empty blizzard");
                     match blizzards.len() {
                         0 => write!(f, ".")?,
                         1 => write!(f, "{}", blizzards[0])?,
@@ -213,10 +185,10 @@ impl Display for Valley {
                     continue;
                 }
 
-                if !self.ground.contains(&point) {
-                    write!(f, "#")?;
-                } else {
+                if self.ground.contains(&point) {
                     write!(f, ".")?;
+                } else {
+                    write!(f, "#")?;
                 }
             }
             writeln!(f, "#")?;
@@ -226,44 +198,91 @@ impl Display for Valley {
     }
 }
 
-fn find_shortest_path(valley: Valley) -> usize {
-    let mut queue = queue::MinPriority::new();
-    queue.push(valley.clone(), 0);
-    let mut came_from: HashMap<(Point, String), Option<(Point, String)>> = HashMap::new();
-    let mut cost_so_far: HashMap<(Point, String), isize> = HashMap::new();
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+struct State {
+    position: Point,
+    valley_id: usize,
+}
 
-    let start = (valley.position, format!("{:?}", valley.blizzards));
+struct Valleys(Vec<Valley>);
 
-    came_from.insert(start.clone(), None);
-    cost_so_far.insert(start, 0);
+impl Valleys {
+    fn distinct(mut valley: Valley) -> Self {
+        let mut valleys = Vec::new();
 
-    while let Some(mut valley) = queue.pop() {
-        println!("{valley}");
+        let initial_valley_fingerprint = format!("{valley}");
 
-        if valley.position == valley.end_point {
-            return valley.minutes + 1;
+        valleys.push(valley.clone());
+
+        loop {
+            valley.tick();
+            let next_valley_fingerprint = format!("{valley}");
+            if next_valley_fingerprint == initial_valley_fingerprint {
+                break;
+            }
+
+            valleys.push(valley.clone());
         }
 
-        let current = (valley.position, format!("{:?}", valley.blizzards));
+        println!("unique valleys: {}", valleys.len());
 
-        valley.tick();
+        Self(valleys)
+    }
 
-        let next_valley = format!("{:?}", valley.blizzards);
+    fn next_positions(&self, state: State) -> Vec<State> {
+        let next_valley_id = state.valley_id.add(1).rem_euclid(self.0.len());
+        let next_valley = self.0.get(next_valley_id).unwrap();
 
-        for next_point in valley.next_positions() {
-            let next = (next_point, next_valley.clone());
+        state
+            .position
+            .neighbours()
+            .into_iter()
+            .filter(|pt| next_valley.ground.contains(pt) && !next_valley.blizzards.contains_key(pt))
+            .map(|pt| State {
+                position: pt,
+                valley_id: next_valley_id,
+            })
+            .chain([State {
+                position: state.position,
+                valley_id: next_valley_id,
+            }])
+            .collect()
+    }
+}
+
+fn find_shortest_path(valley: Valley) -> isize {
+    let start_state = State {
+        valley_id: 0,
+        position: valley.start_point(),
+    };
+
+    let end_point = valley.end_point();
+
+    let valleys = Valleys::distinct(valley);
+
+    let mut queue = queue::MinPriority::default();
+    queue.push(start_state, 0);
+
+    let mut came_from: HashMap<State, Option<State>> = HashMap::new();
+    let mut cost_so_far: HashMap<State, isize> = HashMap::new();
+
+    came_from.insert(start_state, None);
+    cost_so_far.insert(start_state, 0);
+
+    while let Some(current) = queue.pop() {
+        if current.position == end_point {
+            return cost_so_far.get(&current).unwrap().add(1);
+        }
+
+        for next in valleys.next_positions(current) {
             let new_cost = *cost_so_far.get(&current).unwrap() + 1;
             if !came_from.contains_key(&next) || Some(&new_cost) < cost_so_far.get(&next) {
-                let mut valley = valley.clone();
-                cost_so_far.insert(next.clone(), new_cost);
-                let priority = new_cost + manhattan_distance(current.0, valley.end_point);
-                valley.position = next_point;
-                queue.push(valley.clone(), priority.try_into().unwrap());
-                came_from.insert(current.clone(), Some(next));
+                cost_so_far.insert(next, new_cost);
+                came_from.insert(next, Some(current));
+                let priority = new_cost + manhattan_distance(current.position, end_point);
+                queue.push(next, priority.try_into().unwrap());
             }
         }
-
-        // queue.push_back(valley.clone());
     }
 
     panic!("did not get to the end");
@@ -273,16 +292,9 @@ fn manhattan_distance(current: Point, end_point: Point) -> isize {
     (current.x - end_point.x).abs() + (current.y - end_point.y).abs()
 }
 
-pub fn find_shortest_path_through_blizzard(filename: &str) -> usize {
+pub fn find_shortest_path_through_blizzard(filename: &str) -> isize {
     let input = fs::read_to_string(filename).unwrap();
     let valley = Valley::new(&input);
-    // println!("initial: \n{valley}\n");
-    //
-    // for i in 0..19 {
-    //     valley.tick();
-    //     println!("{}: \n{valley}\n", i + 1);
-    // }
-
     find_shortest_path(valley)
 }
 
@@ -294,8 +306,8 @@ mod tests {
     fn find_shortest_path_through_blizzard() {
         fetch_input(24);
         let tests = vec![
-            // ("example/day24.txt", 18),
-            ("input/day24.txt", 0),
+            ("example/day24.txt", 18),
+            ("input/day24.txt", 0000000000000000000000000000),
         ];
 
         for (filename, want) in tests {
