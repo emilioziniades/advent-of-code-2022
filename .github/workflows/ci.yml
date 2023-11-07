@@ -18,7 +18,7 @@ jobs:
           command: check
 
   test:
-    name: Test Suite
+    name: Test
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -31,8 +31,8 @@ jobs:
         with:
           command: test
 
-  fmt:
-    name: Rustfmt
+  format:
+    name: Format
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -47,8 +47,8 @@ jobs:
           command: fmt
           args: --all -- --check
 
-  clippy:
-    name: Clippy
+  lint:
+    name: Lint
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
