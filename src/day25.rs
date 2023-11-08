@@ -34,7 +34,7 @@ fn balanced_quinary_to_decimal(balanced_quinary_n: &str) -> i64 {
             _ => panic!("unrecognized SNAFU digit"),
         })
         .enumerate()
-        .map(|(i, n)| n * 5_i64.pow(i as u32))
+        .map(|(i, n)| n * 5_i64.pow(i.try_into().unwrap()))
         .sum()
 }
 
