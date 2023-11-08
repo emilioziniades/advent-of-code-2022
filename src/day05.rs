@@ -76,8 +76,10 @@ mod tests {
         fetch_input(5);
 
         let tests = vec![
+            // part 1
             ("example/day05.txt", "CMZ", true),
             ("input/day05.txt", "JCMHLVGMG", true),
+            // part 2
             ("example/day05.txt", "MCD", false),
             ("input/day05.txt", "LVMRWSSPZ", false),
         ];

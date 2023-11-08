@@ -198,8 +198,10 @@ mod tests {
     fn measure_monkey_business() {
         fetch_input(11);
         let tests = vec![
+            // part 1
             ("example/day11.txt", 20, WorryManagement::DivByThree, 10605),
             ("input/day11.txt", 20, WorryManagement::DivByThree, 58056),
+            // part 2
             (
                 "example/day11.txt",
                 10_000,

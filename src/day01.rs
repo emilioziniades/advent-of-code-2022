@@ -27,9 +27,11 @@ mod tests {
         fetch_input(1);
 
         let tests = vec![
+            // part 1
             ("example/day01.txt", 24000, 1),
-            ("example/day01.txt", 45000, 3),
             ("input/day01.txt", 69693, 1),
+            // part 2
+            ("example/day01.txt", 45000, 3),
             ("input/day01.txt", 200945, 3),
         ];
 

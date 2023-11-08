@@ -158,8 +158,10 @@ mod tests {
     fn count_tail_positions() {
         fetch_input(9);
         let tests = vec![
+            // part 1
             ("example/day09.txt", 13, 2),
             ("input/day09.txt", 6181, 2),
+            // part 2
             ("example/day09.txt", 1, 10),
             ("example/day09_2.txt", 36, 10),
             ("input/day09.txt", 2386, 10),

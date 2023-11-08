@@ -1,8 +1,8 @@
 use std::{collections::HashSet, fs};
 
 pub fn find_start_marker_position(file: &str, window_size: usize) -> usize {
-    let packet = fs::read_to_string(file).expect("file exists");
-    packet
+    fs::read_to_string(file)
+        .expect("file exists")
         .as_bytes()
         .windows(window_size)
         .position(|packet| packet.len() == packet.iter().collect::<HashSet<_>>().len())
